@@ -8,46 +8,65 @@
 </head>
 <body>
 <header>
-  <h1>search&#8209;rotation</h1>
-  <div class="sub">Round-Robin-Websuche über Gratis-Kontingente · <span id="version"></span> · <code id="configpath"></code></div>
+  <div class="headrow">
+    <div>
+      <h1>search&#8209;rotation</h1>
+      <div class="sub"><span data-i18n="sub.text"></span> · <span id="version"></span> · <code id="configpath"></code></div>
+    </div>
+    <select id="lang" aria-label="Sprache / Language">
+      <option value="de">Deutsch</option>
+      <option value="en">English</option>
+      <option value="zh">中文</option>
+      <option value="hi">हिन्दी</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+    </select>
+  </div>
 </header>
 <main>
   <div id="notice" class="notice hidden"></div>
 
   <section>
-    <h2>Such-Rotation <small>Reihenfolge per Drag &amp; Drop — Round Robin startet oben</small></h2>
+    <h2><span data-i18n="search.title"></span> <small data-i18n="search.subtitle"></small></h2>
     <div id="search-engines" class="cards"></div>
   </section>
 
   <section>
-    <h2>Fetch-Rotation <small>Seiten abrufen / als Markdown extracten</small></h2>
+    <h2><span data-i18n="fetch.title"></span> <small data-i18n="fetch.subtitle"></small></h2>
     <div id="fetch-engines" class="rows"></div>
   </section>
 
+  <section id="history-section">
+    <h2><span data-i18n="history.title"></span> <small data-i18n="history.subtitle"></small></h2>
+    <div class="histbar"><button id="history-clear" data-i18n="history.clear"></button></div>
+    <div id="history-list" class="histlist"><span class="muted" data-i18n="history.empty"></span></div>
+  </section>
+
   <section>
-    <h2>MCP-Setup</h2>
+    <h2 data-i18n="setup.title"></h2>
     <div class="snippets">
       <div class="snippet">
         <h3>Codex — <code>~/.codex/config.toml</code></h3>
         <pre id="snip-codex"></pre>
-        <button data-copy="snip-codex">Kopieren</button>
+        <button data-copy="snip-codex" data-i18n="btn.copy"></button>
       </div>
       <div class="snippet">
         <h3>Claude Desktop / Claude Code</h3>
         <pre id="snip-claude"></pre>
-        <button data-copy="snip-claude">Kopieren</button>
+        <button data-copy="snip-claude" data-i18n="btn.copy"></button>
       </div>
       <div class="snippet">
-        <h3>Remote (Streamable HTTP)</h3>
+        <h3 data-i18n="snippet.remote"></h3>
         <pre id="snip-remote"></pre>
-        <button data-copy="snip-remote">Kopieren</button>
+        <button data-copy="snip-remote" data-i18n="btn.copy"></button>
       </div>
     </div>
   </section>
 </main>
 <footer>
-  Quota-Zähler: lokal pro Kalendermonat · Remote-Quota wo verfügbar (5 Min Cache) ·
-  <button id="refresh">Jetzt aktualisieren</button> · Auto-Refresh alle 30 s
+  <span data-i18n="footer.quota"></span> ·
+  <button id="refresh" data-i18n="btn.refresh"></button> ·
+  <span data-i18n="footer.auto"></span>
 </footer>
 <script src="/app.js"></script>
 </body>

@@ -11,7 +11,7 @@ async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOut
       headers: { "content-type": "application/json", ...bearer(ctx.apiKey) },
       body: JSON.stringify({ query: input.query, limit: cap(input.numResults) }),
     },
-    { signal: ctx.signal },
+    { signal: ctx.signal, timeoutMs: 45_000 },
   );
   if (j && j.success === false) throw new Error(`firecrawl: ${j.error ?? "unbekannter Fehler"}`);
   const arr = j?.data?.web ?? (Array.isArray(j?.data) ? j.data : []);
@@ -46,11 +46,22 @@ async function fetchUrl(input: FetchInput, ctx: EngineContext): Promise<string> 
 
 async function remoteQuota(ctx: EngineContext): Promise<RemoteQuota> {
   const j = await httpJson<any>(`${BASE}/team/credit-usage`, { headers: bearer(ctx.apiKey) });
+  // Response: { success, data: { remainingCredits, planCredits, billingPeriodStart, billingPeriodEnd } }
+  const d = j?.data ?? {};
+  const limit = pickNum(d.planCredits);
+  const remaining = pickNum(d.remainingCredits);
   return {
-    used: typeof j?.data?.creditsUsed === "number" ? j.data.creditsUsed : undefined,
-    limit: typeof j?.data?.planCredits === "number" ? j.data.planCredits : undefined,
-    remaining: typeof j?.data?.creditsRemaining === "number" ? j.data.creditsRemaining : undefined,
+    limit,
+    remaining,
+    used: limit !== undefined && remaining !== undefined ? limit - remaining : undefined,
   };
+}
+
+function pickNum(...vals: unknown[]): number | undefined {
+  for (const v of vals) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return undefined;
 }
 
 export const FIRECRAWL: EngineAdapter = {
@@ -64,7 +75,7 @@ export const FIRECRAWL: EngineAdapter = {
     monthlyFree: 1000,
     quotaEndpoint: true,
     notes:
-      "1.000 Credits/Monat gratis (mit Konto). Ohne Key nur wenige IP-basierte Requests — daher Key empfohlen. Quota per API abrufbar.",
+      "1.000 Credits/Monat gratis (mit Konto). Quota per API abrufbar; Reset nach Billing-Periode (Kontostand zählt Remote), nicht am Kalendermonat. Ohne Key nur wenige IP-basierte Requests.",
   },
   search,
   fetchUrl,

@@ -48,25 +48,16 @@ async function fetchUrl(input: FetchInput, ctx: EngineContext): Promise<string> 
 async function remoteQuota(ctx: EngineContext): Promise<RemoteQuota> {
   if (!ctx.apiKey) throw new NeedsKeyError("tavily", SIGNUP);
   const j = await httpJson<any>(`${BASE}/usage`, { headers: bearer(ctx.apiKey) });
-  // Feldnamen defensiv auslesen — die Antwortstruktur variiert je nach Plan.
+  // Response: { key: { usage, limit, search_usage, ... }, account: { current_plan, plan_usage, plan_limit, ... } }
   const ku = Array.isArray(j?.key_usage) ? j.key_usage[0] : j?.key_usage;
-  const used = pickNumber(ku?.usage, j?.usage, j?.credits_used);
-  const plan = pickString(ku?.plan_id, j?.plan_id, j?.plan);
-  const limit =
-    plan && /free|researcher/i.test(plan) ? 1000 : pickNumber(ku?.plan_limit, j?.plan_limit, j?.limit);
+  const used = pickNumber(j?.key?.usage, ku?.usage, j?.usage);
+  const limit = pickNumber(j?.key?.limit, ku?.limit, j?.limit);
   return { used, limit, remaining: used !== undefined && limit !== undefined ? limit - used : undefined };
 }
 
 function pickNumber(...vals: unknown[]): number | undefined {
   for (const v of vals) {
     if (typeof v === "number" && Number.isFinite(v)) return v;
-  }
-  return undefined;
-}
-
-function pickString(...vals: unknown[]): string | undefined {
-  for (const v of vals) {
-    if (typeof v === "string" && v) return v;
   }
   return undefined;
 }

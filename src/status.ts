@@ -41,6 +41,11 @@ export function maskKey(key?: string): string {
   return `${key.slice(0, 6)}…${key.slice(-4)}`;
 }
 
+/** Remote-Quota-Cache leeren (z. B. nach dem Hinterlegen eines neuen Keys). */
+export function clearRemoteQuotaCache(): void {
+  remoteCache.clear();
+}
+
 /** Remote-Quota vom Anbieter abrufen, 5 Minuten gecacht. */
 export async function fetchRemoteQuotaCached(
   adapter: EngineAdapter,

@@ -19,7 +19,7 @@ Eine Engine = ~1.000 Gratis-Anfragen/Monat. Sieben Engines rotiert = **~10.000+/
 ## Wie die Rotation arbeitet
 
 1. Round Robin startet bei der obersten aktivierten Engine (Reihenfolge im Dashboard).
-2. Engines mit **< 10 % Restkontingent** rutschen ans Ende, **erschöpfte** werden nur noch als letzte Instanz versucht.
+2. Engines mit **höchstens 10 % Restkontingent** rutschen ans Ende, **erschöpfte** werden nur noch als letzte Instanz versucht.
 3. Fehler (401/403/429/5xx/Timeout) → nächste Engine, transparent im Ergebnis (`Failover after: …`).
 4. Restkontingent: Remote vom Anbieter (Tavily, Firecrawl — 5 Min Cache), sonst lokal pro Kalendermonat gezählt.
 5. `engine`-Parameter pinnt eine Engine vorne, Failover bleibt aktiv.

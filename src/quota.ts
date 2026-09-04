@@ -15,7 +15,9 @@ export function computeRemainingPct(
     return Math.max(0, Math.min(1, remaining / remote.limit));
   }
   if (limit > 0) {
-    return Math.max(0, Math.min(1, (limit - (used.search + used.fetch)) / limit));
+    const usedTotal = Number(used.search) + Number(used.fetch);
+    if (!Number.isFinite(usedTotal)) return null;
+    return Math.max(0, Math.min(1, (limit - usedTotal) / limit));
   }
   return null;
 }

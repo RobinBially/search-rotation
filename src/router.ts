@@ -3,6 +3,7 @@ import type {
   EngineAdapter,
   FetchInput,
   FetchResponse,
+  HistoryRecord,
   RemoteQuota,
   SearchInput,
   SearchResponse,
@@ -30,7 +31,7 @@ interface Candidate {
 
 /**
  * Round-Robin-Router: rotiert über die aktivierten Engines, verschiebt
- * Engines mit knappem Restkontingent (<10 %) nach hinten und lässt
+ * Engines mit Restkontingent von höchstens 10 % nach hinten und lässt
  * erschöpfte Engines nur als letzte Instanz zu. Bei Fehlern (429, 5xx,
  * Key-Probleme) wird die nächste Engine der Kette probiert.
  */
@@ -42,6 +43,7 @@ export class SearchRouter {
       getConfig(): PolyConfig;
       usage: UsageStore;
       adapters: EngineAdapter[];
+      history?: { record(entry: HistoryRecord): void };
     },
   ) {}
 
@@ -51,7 +53,12 @@ export class SearchRouter {
     const order = kind === "fetch" ? cfg.fetchOrder : cfg.engines.map((e) => e.id);
 
     const entries: Candidate[] = [];
+    const seen = new Set<string>();
     for (const id of order) {
+      // Belt & Suspenders: normalizeConfig dedupliziert bereits, aber
+      // hand-editierte Configs sollen hier nicht doppelt zählen.
+      if (seen.has(id)) continue;
+      seen.add(id);
       const adapter = byId.get(id);
       if (!adapter) continue;
       if (kind === "search" && !adapter.search) continue;
@@ -92,52 +99,108 @@ export class SearchRouter {
   }
 
   async search(input: SearchInput, opts: { preferEngine?: string } = {}): Promise<SearchResponse> {
+    const t0 = Date.now();
     const chain = await this.chain("search", opts.preferEngine);
     if (chain.length === 0) {
-      throw new RouterError(
-        "Keine aktivierte Such-Engine verfügbar. Im Dashboard Engines aktivieren und/oder Keys hinterlegen.",
-        [],
-      );
+      const msg =
+        "Keine aktivierte Such-Engine verfügbar. Im Dashboard Engines aktivieren und/oder Keys hinterlegen.";
+      this.opts.history?.record({
+        kind: "search",
+        input: input.query,
+        engine: null,
+        ok: false,
+        ms: Date.now() - t0,
+        attempts: [],
+        error: msg,
+      });
+      throw new RouterError(msg, []);
     }
     const attempts: Attempt[] = [];
     for (const c of chain) {
-      const t0 = Date.now();
+      const t0e = Date.now();
       try {
         const out = await c.adapter.search!(
           { query: input.query, numResults: input.numResults },
           { apiKey: c.apiKey, extra: c.extra },
         );
         this.opts.usage.record(c.adapter.meta.id, "search");
-        attempts.push({ engine: c.adapter.meta.id, ok: true, ms: Date.now() - t0 });
+        attempts.push({ engine: c.adapter.meta.id, ok: true, ms: Date.now() - t0e });
+        this.opts.history?.record({
+          kind: "search",
+          input: input.query,
+          engine: c.adapter.meta.id,
+          ok: true,
+          ms: Date.now() - t0,
+          attempts,
+          result: { count: out.items.length, items: out.items },
+        });
         return { items: out.items, answer: out.answer, engine: c.adapter.meta.id, attempts };
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         this.opts.usage.record(c.adapter.meta.id, "search", error);
-        attempts.push({ engine: c.adapter.meta.id, ok: false, ms: Date.now() - t0, error });
+        attempts.push({ engine: c.adapter.meta.id, ok: false, ms: Date.now() - t0e, error });
       }
     }
+    this.opts.history?.record({
+      kind: "search",
+      input: input.query,
+      engine: null,
+      ok: false,
+      ms: Date.now() - t0,
+      attempts,
+      error: `Alle ${attempts.length} Such-Engines fehlgeschlagen.`,
+    });
     throw new RouterError(`Alle ${attempts.length} Such-Engines fehlgeschlagen.`, attempts);
   }
 
   async fetchUrl(input: FetchInput, opts: { preferEngine?: string } = {}): Promise<FetchResponse> {
+    const t0 = Date.now();
     const chain = await this.chain("fetch", opts.preferEngine);
     if (chain.length === 0) {
-      throw new RouterError("Keine aktivierte Fetch-Engine verfügbar. Im Dashboard Fetch-Engines aktivieren.", []);
+      const msg = "Keine aktivierte Fetch-Engine verfügbar. Im Dashboard Fetch-Engines aktivieren.";
+      this.opts.history?.record({
+        kind: "fetch",
+        input: input.url,
+        engine: null,
+        ok: false,
+        ms: Date.now() - t0,
+        attempts: [],
+        error: msg,
+      });
+      throw new RouterError(msg, []);
     }
     const attempts: Attempt[] = [];
     for (const c of chain) {
-      const t0 = Date.now();
+      const t0e = Date.now();
       try {
         const markdown = await c.adapter.fetchUrl!({ url: input.url }, { apiKey: c.apiKey, extra: c.extra });
         this.opts.usage.record(c.adapter.meta.id, "fetch");
-        attempts.push({ engine: c.adapter.meta.id, ok: true, ms: Date.now() - t0 });
+        attempts.push({ engine: c.adapter.meta.id, ok: true, ms: Date.now() - t0e });
+        this.opts.history?.record({
+          kind: "fetch",
+          input: input.url,
+          engine: c.adapter.meta.id,
+          ok: true,
+          ms: Date.now() - t0,
+          attempts,
+          result: { chars: markdown.length, markdown },
+        });
         return { markdown, engine: c.adapter.meta.id, attempts };
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         this.opts.usage.record(c.adapter.meta.id, "fetch", error);
-        attempts.push({ engine: c.adapter.meta.id, ok: false, ms: Date.now() - t0, error });
+        attempts.push({ engine: c.adapter.meta.id, ok: false, ms: Date.now() - t0e, error });
       }
     }
+    this.opts.history?.record({
+      kind: "fetch",
+      input: input.url,
+      engine: null,
+      ok: false,
+      ms: Date.now() - t0,
+      attempts,
+      error: `Alle ${attempts.length} Fetch-Engines fehlgeschlagen.`,
+    });
     throw new RouterError(`Alle ${attempts.length} Fetch-Engines fehlgeschlagen.`, attempts);
   }
 }

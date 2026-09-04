@@ -209,3 +209,110 @@ footer {
 }
 
 .error { color: var(--crit); }
+
+/* --- Header-Layout + Sprachwahl --- */
+
+.headrow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+#lang {
+  background: #10131a;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  flex: none;
+}
+
+/* --- Verlauf --- */
+
+.histbar { margin: 0 0 10px; }
+
+.histlist { display: flex; flex-direction: column; gap: 6px; }
+
+.hist {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.hist.fail { border-color: #5b2323; }
+
+.hist summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  cursor: pointer;
+  list-style: none;
+}
+
+.hist summary::-webkit-details-marker { display: none; }
+
+.htime { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.hkind {
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  color: var(--accent2);
+}
+
+.hkind.fetch { color: var(--accent); }
+
+.hinput {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.chip {
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+}
+
+.chip.ok { color: var(--ok); border-color: #2c5a41; }
+.chip.fail { color: var(--crit); border-color: #5b2323; text-decoration: line-through; }
+
+.hist .ok { color: var(--ok); font-size: 12.5px; margin-left: auto; }
+.hist .error { font-size: 12.5px; }
+
+.histbody {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 8px;
+  font-size: 13px;
+}
+
+.histbody p { margin: 6px 0; }
+
+.att { margin: 4px 0; padding-left: 18px; color: var(--muted); }
+
+.hitems { margin: 4px 0; padding-left: 18px; }
+.hitems li { margin: 4px 0; }
+.hitems a { color: var(--accent2); text-decoration: none; }
+.hitems a:hover { text-decoration: underline; }
+
+.muted { color: var(--muted); }
+
+.histbody pre {
+  background: #10131a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  overflow-x: auto;
+  max-height: 220px;
+  white-space: pre-wrap;
+}

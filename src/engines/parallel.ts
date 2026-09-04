@@ -37,7 +37,7 @@ async function fetchUrl(input: FetchInput, ctx: EngineContext): Promise<string> 
     {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": ctx.apiKey },
-      body: JSON.stringify({ urls: [input.url], full_content: true }),
+      body: JSON.stringify({ urls: [input.url], advanced_settings: { full_content: true } }),
     },
     { signal: ctx.signal, timeoutMs: 45_000 },
   );
@@ -48,7 +48,15 @@ async function fetchUrl(input: FetchInput, ctx: EngineContext): Promise<string> 
       : Array.isArray(r0?.excerpts)
         ? r0.excerpts.join("\n\n")
         : "";
-  if (!md.trim()) throw new Error("parallel: kein Inhalt extrahiert");
+  if (!md.trim()) {
+    // Parallel liefert Fehler pro URL im errors[]-Array — mit ausgeben.
+    const errs = Array.isArray(j?.errors) ? j.errors : [];
+    const detail = errs
+      .map((e: any) => `${e?.error_type ?? "error"}: ${e?.content ?? ""}`.trim())
+      .filter(Boolean)
+      .join("; ");
+    throw new Error("parallel: kein Inhalt extrahiert" + (detail ? ` (${detail.slice(0, 200)})` : ""));
+  }
   return md;
 }
 

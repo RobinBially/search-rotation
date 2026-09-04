@@ -2,14 +2,16 @@
 import { parseArgs } from "node:util";
 import { createServer } from "node:net";
 import { spawn } from "node:child_process";
+import path from "node:path";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ConfigStore, configDir } from "./config.js";
 import { ADAPTERS, SEARCH_ORDER, FETCH_ORDER, DEFAULT_ENABLED, KNOWN_IDS } from "./engines/index.js";
 import { UsageStore } from "./usage.js";
+import { HistoryStore } from "./history.js";
 import { SearchRouter } from "./router.js";
-import { buildStatus } from "./status.js";
+import { buildStatus, clearRemoteQuotaCache } from "./status.js";
 import { buildMcpServer } from "./mcp/server.js";
 import { mountMcpHttp } from "./mcp/http.js";
 import { buildWebApp } from "./web/app.js";
@@ -66,7 +68,8 @@ async function main(): Promise<void> {
   };
   let cfg = store.load(defaults);
   const usage = new UsageStore(configDir());
-  const router = new SearchRouter({ getConfig: () => cfg, usage, adapters: ADAPTERS });
+  const history = new HistoryStore(path.join(configDir(), "history.json"));
+  const router = new SearchRouter({ getConfig: () => cfg, usage, adapters: ADAPTERS, history });
 
   const month = () => usage.monthKey();
   const status = () => buildStatus(cfg, usage, ADAPTERS);
@@ -82,6 +85,15 @@ async function main(): Promise<void> {
         if (!adapter.search) return { ok: false, ms: 0, error: "Engine kann nicht suchen" };
         const out = await adapter.search({ query: arg || "model context protocol", numResults: 3 }, ctx);
         usage.record(id, "search");
+        history.record({
+          kind: "search",
+          input: arg || "model context protocol",
+          engine: id,
+          ok: true,
+          ms: Date.now() - t0,
+          attempts: [],
+          result: { count: out.items.length, items: out.items },
+        });
         return {
           ok: true,
           ms: Date.now() - t0,
@@ -95,21 +107,48 @@ async function main(): Promise<void> {
       if (!adapter.fetchUrl) return { ok: false, ms: 0, error: "Engine kann nicht fetchen" };
       const md = await adapter.fetchUrl({ url: arg || "https://example.com" }, ctx);
       usage.record(id, "fetch");
+      history.record({
+        kind: "fetch",
+        input: arg || "https://example.com",
+        engine: id,
+        ok: true,
+        ms: Date.now() - t0,
+        attempts: [],
+        result: { chars: md.length, markdown: md },
+      });
       return { ok: true, ms: Date.now() - t0, chars: md.length, preview: md.slice(0, 400) };
     } catch (err) {
-      return { ok: false, ms: Date.now() - t0, error: err instanceof Error ? err.message : String(err) };
+      const message = err instanceof Error ? err.message : String(err);
+      history.record({
+        kind,
+        input: arg,
+        engine: id,
+        ok: false,
+        ms: Date.now() - t0,
+        attempts: [],
+        error: message,
+      });
+      return { ok: false, ms: Date.now() - t0, error: message };
     }
   };
 
   const token = args.token ?? process.env.SEARCH_ROTATION_TOKEN ?? cfg.settings.token;
   const host = args.host ?? "127.0.0.1";
   const dashboardEnabled = !args["no-dashboard"];
-  const port = dashboardEnabled ? await findFreePort(args.port ? Number(args.port) : cfg.settings.port, host) : 0;
+  // HTTP-Server nötig für das Dashboard UND für --http — sonst hat der Prozess
+  // kein Keep-Alive-Handle und beendet sich sofort (--http --no-dashboard-Fix).
+  const httpNeeded = dashboardEnabled || args.http;
+  const wantedPort = args.port !== undefined ? Number(args.port) : cfg.settings.port;
+  const basePort =
+    Number.isInteger(wantedPort) && wantedPort >= 1024 && wantedPort <= 65535
+      ? wantedPort
+      : cfg.settings.port;
+  const port = httpNeeded ? await findFreePort(basePort, host) : 0;
 
-  const dashboardUrl = () =>
+  const dashboardUrl = (): string | null =>
     dashboardEnabled
       ? `http://${host}:${port}/` + (token ? `?token=${encodeURIComponent(token)}` : "")
-      : "Dashboard deaktiviert (--no-dashboard)";
+      : null;
 
   const mcpDeps = {
     router,
@@ -117,7 +156,8 @@ async function main(): Promise<void> {
     month,
     dashboardUrl,
     openDashboard: () => {
-      if (dashboardEnabled) openBrowser(dashboardUrl());
+      const url = dashboardUrl();
+      if (url) openBrowser(url);
     },
   };
 
@@ -144,18 +184,30 @@ async function main(): Promise<void> {
       saveConfig: (next) => {
         store.save(next);
         cfg = next;
+        // Neuer Key? Dann Remote-Quota sofort frisch ziehen statt 5 Min Cache.
+        clearRemoteQuotaCache();
       },
       adapters: ADAPTERS,
       status,
       month,
       testEngine,
+      historyList: (limit) => history.list(limit),
+      historyClear: () => history.clear(),
     }),
   );
   mountMcpHttp(app, mcpDeps);
 
-  if (dashboardEnabled) {
-    serve({ fetch: app.fetch, port, hostname: host });
-    console.error(`[search-rotation] Dashboard: ${dashboardUrl()}`);
+  if (httpNeeded) {
+    const srv = serve({ fetch: app.fetch, port, hostname: host });
+    // TOCTOU-Restrisiko: wird der Port zwischen findFreePort und Binden doch
+    // belegt, laut statt still mit Stacktrace sterben.
+    srv.on("error", (err: NodeJS.ErrnoException) => {
+      console.error(
+        `[search-rotation] fatal: HTTP-Server auf ${host}:${port} fehlgeschlagen (${err.code ?? err.message})`,
+      );
+      process.exit(1);
+    });
+    if (dashboardEnabled) console.error(`[search-rotation] Dashboard: ${dashboardUrl()}`);
   }
 
   if (args.http) {
@@ -164,19 +216,21 @@ async function main(): Promise<void> {
         (token ? " (Bearer-Token nötig)" : ""),
     );
   } else {
+    // Exit, sobald der MCP-Client stdin schließt — vor connect registrieren,
+    // damit kein Fenster bleibt, in dem der Prozess hängen bleibt.
+    const exit = () => process.exit(0);
+    process.stdin.on("end", exit);
+    process.stdin.on("close", exit);
+    process.stdin.on("error", exit);
     const mcp = buildMcpServer(mcpDeps);
     await mcp.connect(new StdioServerTransport());
-    // Sauberer Exit, wenn der MCP-Client stdin schließt (sonst hält der
-    // Dashboard-HTTP-Server den Prozess am Leben).
-    process.stdin.on("end", () => process.exit(0));
-    process.stdin.on("close", () => process.exit(0));
     console.error(
       `[search-rotation] v${VERSION} — MCP stdio aktiv.` +
         (dashboardEnabled ? ` Dashboard: ${dashboardUrl()}` : ""),
     );
   }
 
-  if (args.open && dashboardEnabled) openBrowser(dashboardUrl());
+  if (args.open && dashboardEnabled) openBrowser(dashboardUrl()!);
 }
 
 main().catch((err: unknown) => {

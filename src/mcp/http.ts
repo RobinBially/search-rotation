@@ -9,6 +9,16 @@ import { buildMcpServer, type McpDeps } from "./server.js";
  */
 export function mountMcpHttp(app: Hono, deps: McpDeps): void {
   app.all("/mcp", async (c) => {
+    // Stateless-Modus: es gibt keinen langlebigen SSE-Kanal. Ein GET mit
+    // Accept: text/event-stream würde vom Client als reconnectabler Stream
+    // interpretiert → Reconnect-Loop. Deshalb sofort 405.
+    if (c.req.method === "GET") {
+      return c.text(
+        "405 — SSE-Streaming im Stateless-Modus nicht unterstützt; JSON-RPC per POST senden.",
+        405,
+        { allow: "POST" },
+      );
+    }
     const server = buildMcpServer(deps);
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

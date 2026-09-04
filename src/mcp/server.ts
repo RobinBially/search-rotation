@@ -8,7 +8,8 @@ export interface McpDeps {
   router: SearchRouter;
   status(): Promise<StatusRow[]>;
   month(): string;
-  dashboardUrl(): string;
+  /** null = Dashboard deaktiviert (--no-dashboard) */
+  dashboardUrl(): string | null;
   openDashboard(): void;
 }
 
@@ -108,8 +109,20 @@ export function buildMcpServer(deps: McpDeps): McpServer {
       inputSchema: {},
     },
     async () => {
+      const url = deps.dashboardUrl();
+      if (!url) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "Dashboard ist deaktiviert (gestartet mit --no-dashboard). Ohne Dashboard-Flag neu starten, um Keys/Reihenfolge/Kontingente zu konfigurieren.",
+            },
+          ],
+        };
+      }
       deps.openDashboard();
-      return { content: [{ type: "text", text: `Dashboard: ${deps.dashboardUrl()}` }] };
+      return { content: [{ type: "text", text: `Dashboard: ${url}` }] };
     },
   );
 

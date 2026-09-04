@@ -34,11 +34,13 @@ export interface HttpOptions {
 export async function httpText(url: string, init: RequestInit = {}, opts: HttpOptions = {}): Promise<string> {
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? 20_000);
   const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
-  const res = await fetch(url, {
-    ...init,
-    signal,
-    headers: { "user-agent": USER_AGENT, ...(init.headers ?? {}) },
-  });
+  const headers: Record<string, string> = {
+    "user-agent": USER_AGENT,
+    // new Headers(...) normalisiert auch Headers-Instanzen und string[][] mit
+    // — ein simpler Spread würde sie als leeres Objekt droppen.
+    ...Object.fromEntries(new Headers(init.headers ?? undefined)),
+  };
+  const res = await fetch(url, { ...init, signal, headers });
   const body = await res.text();
   if (!res.ok) throw new HttpError(res.status, body, url);
   return body;
@@ -63,7 +65,7 @@ export function bearer(key?: string): Record<string, string> {
 
 export function cap(n: number | undefined, fallback = 8, max = 20): number {
   const v = typeof n === "number" && Number.isFinite(n) ? Math.round(n) : fallback;
-  return Math.min(Math.max(v, 1), max);
+  return Math.min(Math.max(v, 1), Math.max(Math.round(max), 1));
 }
 
 function safeHost(url: string): string {

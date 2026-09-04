@@ -70,18 +70,33 @@ export function normalizeConfig(raw: unknown, d: ConfigDefaults): PolyConfig {
     if (!fo.includes(id)) fo.push(id);
   }
 
+  const seen = new Set<string>();
+  const engines = rawEngines.filter((e) => {
+    // Hand-editierte Configs können Dubletten enthalten — der Router würde
+    // sonst dieselbe Engine mehrfach pro Suche aufrufen (doppelte Quota!).
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  });
   const s = (raw as any)?.settings ?? {};
+  const rawLimits =
+    s.monthlyLimits && typeof s.monthlyLimits === "object" && !Array.isArray(s.monthlyLimits)
+      ? s.monthlyLimits
+      : {};
+  // Nur endliche Zahlen >= 0 — ein Tippfehler ("abc") würde die Engine sonst
+  // unbegrenzt schalten, statt sie zu drosseln.
+  const monthlyLimits: Record<string, number> = {};
+  for (const [k, v] of Object.entries(rawLimits)) {
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) monthlyLimits[k] = v;
+  }
   return {
     version: 1,
-    engines: rawEngines,
+    engines,
     fetchOrder: fo,
     settings: {
       port: Number.isInteger(s.port) && s.port >= 1024 && s.port <= 65535 ? s.port : 6277,
       token: typeof s.token === "string" ? s.token : "",
-      monthlyLimits:
-        s.monthlyLimits && typeof s.monthlyLimits === "object" && !Array.isArray(s.monthlyLimits)
-          ? (s.monthlyLimits as Record<string, number>)
-          : {},
+      monthlyLimits,
     },
   };
 }

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { EngineAdapter, TestResult } from "../types.js";
 import type { EngineConfig, PolyConfig } from "../config.js";
+import type { HistoryEntry } from "../history.js";
 import type { StatusRow } from "../status.js";
 import { maskKey } from "../status.js";
 import { VERSION } from "../version.js";
@@ -18,6 +19,8 @@ export interface WebDeps {
   status(): Promise<StatusRow[]>;
   month(): string;
   testEngine(id: string, kind: "search" | "fetch", arg: string): Promise<TestResult>;
+  historyList(limit: number): HistoryEntry[];
+  historyClear(): void;
 }
 
 function publicConfig(cfg: PolyConfig, adapters: EngineAdapter[]) {
@@ -133,6 +136,18 @@ export function buildWebApp(deps: WebDeps) {
       engines: await deps.status(),
     }),
   );
+
+  app.get("/api/history", (c) => {
+    // Number("") wäre 0 — deshalb explizit > 0 prüfen
+    const n = Number(c.req.query("limit") ?? 50);
+    const limit = Number.isFinite(n) && n > 0 ? n : 50;
+    return c.json({ entries: deps.historyList(limit) });
+  });
+
+  app.delete("/api/history", (c) => {
+    deps.historyClear();
+    return c.json({ ok: true });
+  });
 
   app.post("/api/test", async (c) => {
     const body: any = await c.req.json().catch(() => null);

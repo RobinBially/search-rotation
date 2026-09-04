@@ -84,3 +84,21 @@ export interface TestResult {
   chars?: number;
   preview?: string;
 }
+
+/** Eintrag für den Verlauf (Such-/Fetch-Aufruf mit Ergebnis). */
+export interface HistoryRecord {
+  kind: "search" | "fetch";
+  /** Query bzw. URL */
+  input: string;
+  engine: string | null;
+  ok: boolean;
+  ms: number;
+  attempts: Attempt[];
+  error?: string;
+  result?: {
+    count?: number;
+    chars?: number;
+    items?: SearchItem[];
+    markdown?: string;
+  };
+}
