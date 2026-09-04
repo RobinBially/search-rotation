@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import { atomicWriteFile, withFileLock } from "./persistence.js";
 import type { HistoryRecord } from "./types.js";
 
 export interface HistoryEntry extends HistoryRecord {
@@ -11,9 +11,7 @@ const MAX_MARKDOWN = 3000;
 
 /**
  * Verlauf der Such-/Fetch-Aufrufe als Ring-Puffer in einer JSON-Datei.
- * Liest vor jedem Schreibvorgang die Datei neu, damit mehrere Prozesse
- * (z. B. OpenCode-Session + Dashboard-Test) sich nicht gegenseitig
- * Einträge überschreiben.
+ * Serialisiert Lesen, Schreiben und Löschen über eine Prozesssperre.
  */
 export class HistoryStore {
   private readonly file: string;
@@ -28,16 +26,16 @@ export class HistoryStore {
     try {
       const raw = JSON.parse(fs.readFileSync(this.file, "utf8"));
       if (Array.isArray(raw)) return raw;
-    } catch {
-      /* fehlt/defekt → leer */
+    } catch (error) {
+      // Keep missing/corrupt-file recovery; an I/O failure must not cause a
+      // successful later write to replace an unread existing snapshot.
+      if (!(error instanceof SyntaxError) && (error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
     return [];
   }
 
   private write(entries: HistoryEntry[]): void {
-    const tmp = `${this.file}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(entries));
-    fs.renameSync(tmp, this.file);
+    atomicWriteFile(this.file, JSON.stringify(entries));
   }
 
   record(entry: HistoryRecord): void {
@@ -48,13 +46,15 @@ export class HistoryStore {
     if (capped.result?.markdown && capped.result.markdown.length > MAX_MARKDOWN) {
       capped.result = { ...capped.result, markdown: capped.result.markdown.slice(0, MAX_MARKDOWN) };
     }
-    // Neu lesen → Prozess-übergreifend deutlich robustere Writes
-    const entries = this.read().filter((e) => e && typeof e.ts === "string");
-    entries.unshift({ ...capped, ts: new Date().toISOString() });
     try {
-      this.write(entries.slice(0, this.maxEntries));
+      withFileLock(this.file, () => {
+        const entries = this.read().filter((e) => e && typeof e.ts === "string");
+        entries.unshift({ ...capped, ts: new Date().toISOString() });
+        this.write(entries.slice(0, this.maxEntries));
+      });
     } catch {
-      /* Verlauf ist nice-to-have */
+      // Optional history must never turn a successful provider request into failover.
+      process.stderr.write("search-rotation: history persistence failed\n");
     }
   }
 
@@ -63,10 +63,6 @@ export class HistoryStore {
   }
 
   clear(): void {
-    try {
-      fs.rmSync(this.file);
-    } catch {
-      /* ok wenn fehlt */
-    }
+    withFileLock(this.file, () => fs.rmSync(this.file, { force: true }));
   }
 }

@@ -31,6 +31,7 @@ export const GOOGLE_CSE: EngineAdapter = {
     keyless: "no",
     capabilities: ["search"],
     monthlyFree: 3000,
+    quota: { period: "day", unit: "requests", limit: 100, timeZone: "America/Los_Angeles", estimated: false },
     quotaEndpoint: false,
     notes:
       "100 Queries/Tag gratis (= ~3.000/Monat) — das größte Einzelkontingent. Braucht API-Key plus Search Engine ID (CX). Standardmäßig deaktiviert.",

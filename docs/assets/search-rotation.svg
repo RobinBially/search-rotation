@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">search-rotation: eine Suche, mehrere Engines</title>
+  <desc id="desc">Ein MCP-Client sendet eine Suche. Der Router verteilt sie auf verfügbare Engines, priorisiert verbleibendes Kontingent und wechselt bei Fehlern zum nächsten Anbieter. Der Client erhält ein einheitliches Ergebnis.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#101426"/><stop offset="1" stop-color="#080b13"/></linearGradient>
+    <linearGradient id="accent" x2="1" y2="1"><stop stop-color="#9d8cff"/><stop offset="1" stop-color="#54d9d0"/></linearGradient>
+    <linearGradient id="router" x2="1" y2="1"><stop stop-color="#292442"/><stop offset="1" stop-color="#142b32"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10" fill="none" stroke="#78879e" stroke-width="1.5"/></marker>
+  </defs>
+  <rect width="1280" height="640" rx="24" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1278" height="638" rx="23" fill="none" stroke="#263047"/>
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <circle cx="73" cy="69" r="20" fill="none" stroke="url(#accent)" stroke-width="5" stroke-dasharray="94 32" transform="rotate(-25 73 69)"/>
+    <circle cx="73" cy="69" r="6" fill="url(#accent)"/>
+    <text x="112" y="78" fill="#eaf0fb" font-size="28" font-weight="700" letter-spacing="-.5">search-rotation</text>
+    <rect x="1057" y="49" width="166" height="35" rx="17" fill="#182c2a" stroke="#244d44"/>
+    <circle cx="1080" cy="66" r="4" fill="#64dfb6"/><text x="1094" y="72" fill="#a5ecd7" font-size="14" font-weight="600">MCP · Open Source</text>
+    <text x="52" y="151" fill="#f5f7ff" font-size="42" font-weight="750" letter-spacing="-1.3">Eine Suche. Mehrere Engines.</text>
+    <text x="54" y="185" fill="#a3afc6" font-size="19">Verfügbare Kontingente nutzen. Bei Fehlern automatisch weitersuchen.</text>
+    <!-- The illustration describes the routing flow; it is not a dashboard screenshot. -->
+    <rect x="52" y="252" width="248" height="192" rx="16" fill="#141b2a" stroke="#30394e"/>
+    <text x="76" y="286" fill="#8d9bb5" font-size="12" font-weight="700" letter-spacing="1.5">DEIN MCP-CLIENT</text>
+    <text x="76" y="327" fill="#f1f4fb" font-size="23" font-weight="650">Eine Anfrage</text>
+    <rect x="75" y="347" width="202" height="39" rx="8" fill="#0c1220"/>
+    <text x="89" y="372" fill="#c5baff" font-family="'SFMono-Regular', Consolas, monospace" font-size="15">web_search(query)</text>
+    <text x="76" y="417" fill="#93a0b8" font-size="14">Codex · Claude · Cursor · …</text>
+    <path d="M307 346 H368" fill="none" stroke="#78879e" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="384" y="235" width="328" height="228" rx="18" fill="url(#router)" stroke="#726ca7"/>
+    <text x="410" y="270" fill="#b7c2dd" font-size="12" font-weight="700" letter-spacing="1.5">SEARCH-ROTATION</text>
+    <text x="410" y="311" fill="#f6f4ff" font-size="27" font-weight="700">Rotation + Failover</text>
+    <circle cx="417" cy="341" r="4" fill="#73e0c2"/><text x="432" y="347" fill="#d4dcec" font-size="16">Kontingent priorisieren</text>
+    <circle cx="417" cy="374" r="4" fill="#9b8cff"/><text x="432" y="380" fill="#d4dcec" font-size="16">Such- und Fetch-Rotation trennen</text>
+    <circle cx="417" cy="407" r="4" fill="#e5bc73"/><text x="432" y="413" fill="#d4dcec" font-size="16">Fehler erkennen · Engine wechseln</text>
+    <path d="M720 346 H782" fill="none" stroke="#78879e" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="799" y="229" width="427" height="64" rx="13" fill="#122b28" stroke="#285548"/>
+    <circle cx="824" cy="255" r="5" fill="#68dab4"/><text x="840" y="260" fill="#b2f1d9" font-size="15" font-weight="650">Kontingent verfügbar</text>
+    <text x="824" y="281" fill="#a3b7b3" font-size="13">Gesunde Engines kommen zuerst zum Zug.</text>
+    <rect x="799" y="306" width="427" height="64" rx="13" fill="#2b2419" stroke="#5a4630"/>
+    <circle cx="824" cy="332" r="5" fill="#e8bc70"/><text x="840" y="337" fill="#efd29e" font-size="15" font-weight="650">Höchstens 10 % übrig</text>
+    <text x="824" y="358" fill="#b9aa93" font-size="13">Knappe Kontingente rutschen nach hinten.</text>
+    <rect x="799" y="383" width="427" height="80" rx="13" fill="#1c202e" stroke="#373c50"/>
+    <circle cx="824" cy="409" r="5" fill="#8c95b0"/><text x="840" y="414" fill="#c4cadd" font-size="15" font-weight="650">Erschöpft oder vorübergehend gesperrt</text>
+    <text x="824" y="435" fill="#929db6" font-size="13">Gratis-Modus überspringt erschöpfte Kontingente.</text>
+    <text x="824" y="452" fill="#929db6" font-size="13">Cooldown schützt vor wiederholten Fehlern.</text>
+    <path d="M548 473 V507 H178 V454" fill="none" stroke="#657892" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+    <rect x="229" y="491" width="268" height="32" rx="16" fill="#151d2d" stroke="#303c54"/>
+    <text x="251" y="512" fill="#b7c7df" font-size="13">Einheitlich: Titel · URL · Beschreibung</text>
+    <path d="M53 555 H1226" stroke="#293245"/>
+    <text x="54" y="591" fill="#94a3bd" font-size="15">Tavily · Firecrawl · Parallel · Exa · Google PSE · Jina · DuckDuckGo</text>
+    <text x="54" y="615" fill="#65758f" font-size="13">4 MCP-Tools · Lokales Dashboard · Direkt von GitHub installierbar</text>
+  </g>
+</svg>

@@ -18,7 +18,7 @@ export interface WebDeps {
   adapters: EngineAdapter[];
   status(): Promise<StatusRow[]>;
   month(): string;
-  testEngine(id: string, kind: "search" | "fetch", arg: string): Promise<TestResult>;
+  testEngine(id: string, kind: "search" | "fetch", arg: string, signal?: AbortSignal): Promise<TestResult>;
   historyList(limit: number): HistoryEntry[];
   historyClear(): void;
 }
@@ -39,7 +39,9 @@ function publicConfig(cfg: PolyConfig, adapters: EngineAdapter[]) {
       };
     }),
     fetchOrder: cfg.fetchOrder,
-    settings: { port: cfg.settings.port, tokenSet: Boolean(cfg.settings.token) },
+    settings: { port: cfg.settings.port, tokenSet: Boolean(cfg.settings.token),
+      strictFreeMode: cfg.settings.strictFreeMode ?? false, requestTimeoutMs: cfg.settings.requestTimeoutMs ?? 60_000,
+      monthlyLimits: cfg.settings.monthlyLimits, dailyLimits: cfg.settings.dailyLimits ?? {} },
     enginesMeta: adapters.map((a) => a.meta),
   };
 }
@@ -127,11 +129,20 @@ export function buildWebApp(deps: WebDeps) {
     ) {
       settings.port = body.settings.port;
     }
+    if (typeof body.settings?.strictFreeMode === "boolean") settings.strictFreeMode = body.settings.strictFreeMode;
+    if (Number.isInteger(body.settings?.requestTimeoutMs) && body.settings.requestTimeoutMs >= 1000 && body.settings.requestTimeoutMs <= 300_000) settings.requestTimeoutMs = body.settings.requestTimeoutMs;
+    for (const field of ["dailyLimits", "monthlyLimits"] as const) {
+      const limits = body.settings?.[field];
+      if (limits && typeof limits === "object" && !Array.isArray(limits)) {
+        settings[field] = Object.fromEntries(Object.entries(limits).filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0)) as Record<string, number>;
+      }
+    }
     if (body.settings?.token === null) settings.token = "";
     else if (typeof body.settings?.token === "string") settings.token = body.settings.token.trim();
 
-    deps.saveConfig({ version: 1, engines: merged, fetchOrder: fo, settings });
-    return c.json({ ok: true, config: publicConfig(deps.getConfig(), deps.adapters) });
+    const requiresRestart = settings.token !== cfg.settings.token || settings.port !== cfg.settings.port;
+    deps.saveConfig({ version: 1, engines: merged, fetchOrder: [...new Set(fo)], settings });
+    return c.json({ ok: true, requiresRestart, config: publicConfig(deps.getConfig(), deps.adapters) });
   });
 
   app.get("/api/status", async (c) =>
@@ -165,7 +176,7 @@ export function buildWebApp(deps: WebDeps) {
     const arg = String(
       body?.arg ?? (kind === "search" ? "model context protocol" : "https://example.com"),
     );
-    return c.json(await deps.testEngine(id, kind, arg));
+    return c.json(await deps.testEngine(id, kind, arg, c.req.raw.signal));
   });
 
   return app;

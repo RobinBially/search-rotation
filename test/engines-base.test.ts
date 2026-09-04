@@ -237,16 +237,14 @@ test("parseDdgHtml: fehlende Snippets → snippet undefined; leerer Titel → Fa
   ]);
 });
 
-test("parseDdgHtml: Snippet-Pairing ist positional — fehlendes Snippet verschiebt die Zuordnung (dokumentiert aktuelles Verhalten, s. Report-Befund)", () => {
+test("parseDdgHtml: fehlendes Snippet verschiebt die Zuordnung nicht", () => {
   const html = `
     <a class="result__a" href="https://a.example">Erster Treffer</a>
     <a class="result__a" href="https://b.example">Zweiter Treffer</a>
     <a class="result__snippet" href="#">Gehört inhaltlich zum zweiten Treffer</a>`;
   const items = parseDdgHtml(html);
-  // Snippets werden vorab gesammelt und per Index zugeordnet — der erste Treffer
-  // erhält hier fälschlich das Snippet des zweiten (Report: Gelb).
-  assert.equal(items[0].snippet, "Gehört inhaltlich zum zweiten Treffer");
-  assert.equal(items[1].snippet, undefined);
+  assert.equal(items[0].snippet, undefined);
+  assert.equal(items[1].snippet, "Gehört inhaltlich zum zweiten Treffer");
 });
 
 test("parseDdgHtml: cappt auf 20 Ergebnisse", () => {
@@ -267,18 +265,7 @@ test("parseDdgHtml: uddg mit defekten Prozent-Sequenzen → Fallback auf Rohwert
   assert.equal(items[0].url, "https%3A%2F%2Fexample.com%2F100%zz");
 });
 
-// ---------------------------------------------------------------------------
-// Bekannter Bug (base.ts) — als test.skip dokumentiert, Suite bleibt grün
-// ---------------------------------------------------------------------------
-
-test.skip("FIXED — BUG (base.ts): httpText/httpJson droppen init.headers, wenn eine Headers-Instanz übergeben wird → Fix: Object.fromEntries(new Headers(...)) (Verhalten jetzt korrekt, Original-Assertion beschrieb den Bug)", async (t) => {
-  // base.ts (httpText): `headers: { "user-agent": USER_AGENT, ...(init.headers ?? {}) }`
-  // Objekt-Spread über eine Headers-Instanz ergibt {} — die Einträge liegen nicht
-  // als eigene aufzählbare Properties vor, alle übergebenen Header gehen verloren.
-  // Aktuell harmlos (alle Adapter übergeben Plain-Objects), aber RequestInit
-  // erlaubt laut Typ `Headers | string[][] | Record<string, string>`.
-  // Fix-Vorschlag: vor dem Spread normalisieren, z. B.
-  //   ...Object.fromEntries(new Headers(init.headers ?? null))
+test("httpJson erhält Header aus einer Headers-Instanz", async (t) => {
   const server = await startServer((req, res) => {
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ probe: req.headers["x-probe"] ?? null }));

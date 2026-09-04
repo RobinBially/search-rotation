@@ -1,6 +1,6 @@
 {
   "name": "search-rotation",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Round-robin web search over the free tiers of multiple search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina, DuckDuckGo) as an MCP server — with a local dashboard for API keys, engine order/toggles and live quota status.",
   "type": "module",
   "license": "MIT",
@@ -12,6 +12,7 @@
   "files": [
     "dist",
     "static",
+    "docs",
     "README.md",
     "LICENSE"
   ],
@@ -35,8 +36,8 @@
     "prepare": "npm run build",
     "dev": "tsx src/index.ts --http --port 6277",
     "start": "node dist/index.js --http --port 6277",
-    "test": "node --import tsx --test test/router.test.ts test/ddg.test.ts test/config.test.ts",
-    "prepublishOnly": "npm run build"
+    "test": "node --import tsx --test test/*.test.ts",
+    "smoke:package": "node scripts/smoke-package.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",

@@ -47,7 +47,7 @@ async function fetchUrl(input: FetchInput, ctx: EngineContext): Promise<string> 
 
 async function remoteQuota(ctx: EngineContext): Promise<RemoteQuota> {
   if (!ctx.apiKey) throw new NeedsKeyError("tavily", SIGNUP);
-  const j = await httpJson<any>(`${BASE}/usage`, { headers: bearer(ctx.apiKey) });
+  const j = await httpJson<any>(`${BASE}/usage`, { headers: bearer(ctx.apiKey) }, { signal: ctx.signal });
   // Response: { key: { usage, limit, search_usage, ... }, account: { current_plan, plan_usage, plan_limit, ... } }
   const ku = Array.isArray(j?.key_usage) ? j.key_usage[0] : j?.key_usage;
   const used = pickNumber(j?.key?.usage, ku?.usage, j?.usage);
@@ -71,6 +71,7 @@ export const TAVILY: EngineAdapter = {
     keyless: "no",
     capabilities: ["search", "fetch"],
     monthlyFree: 1000,
+    quota: { period: "month", unit: "credits", limit: 1000, estimated: true, costs: { search: 1, fetch: 0.2 } },
     quotaEndpoint: true,
     notes: "1.000 Credits/Monat gratis, Reset am Monatsanfang, keine Kreditkarte nötig. Quota per API abrufbar.",
   },

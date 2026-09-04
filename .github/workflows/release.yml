@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Build GitHub release
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Verify release tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/verify-release.mjs
+      - name: Install dependencies and build
+        run: npm ci
+      - name: Pack and verify installation
+        run: npm run smoke:package
+      - name: Create release archive and checksums
+        run: |
+          mkdir -p release-artifacts
+          npm pack --pack-destination release-artifacts
+          cd release-artifacts
+          sha256sum *.tgz > SHA256SUMS
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" release-artifacts/*.tgz release-artifacts/SHA256SUMS \
+            --verify-tag --title "$RELEASE_TAG" --generate-notes --notes-file docs/release-notes.md

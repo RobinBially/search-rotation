@@ -38,11 +38,12 @@ export function parseDdgHtml(html: string): SearchItem[] {
   const items: SearchItem[] = [];
   const linkRe = /<a[^>]+class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
   const snippetRe = /<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
-  const snippets: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = snippetRe.exec(html))) snippets.push(stripTags(m[1]));
-  let i = 0;
-  while ((m = linkRe.exec(html)) && items.length < 20) {
+  const links = [...html.matchAll(linkRe)];
+  for (const [i, m] of links.slice(0, 20).entries()) {
+    // Ein Snippet gehört nur zum Bereich nach diesem Treffer und vor dem nächsten.
+    const block = html.slice(m.index! + m[0].length, links[i + 1]?.index ?? html.length);
+    snippetRe.lastIndex = 0;
+    const snippet = snippetRe.exec(block)?.[1];
     let raw = decodeEntities(m[1]);
     const uddg = raw.match(/[?&]uddg=([^&]+)/);
     if (uddg) {
@@ -52,8 +53,7 @@ export function parseDdgHtml(html: string): SearchItem[] {
         raw = uddg[1];
       }
     }
-    items.push({ title: stripTags(m[2]) || "(ohne Titel)", url: raw, snippet: snippets[i] });
-    i += 1;
+    items.push({ title: stripTags(m[2]) || "(ohne Titel)", url: raw, snippet: snippet === undefined ? undefined : stripTags(snippet) });
   }
   return items;
 }
@@ -92,6 +92,7 @@ export const DUCKDUCKGO: EngineAdapter = {
     keyless: "ip",
     capabilities: ["search"],
     monthlyFree: 0,
+    quota: { period: "ip", unit: "requests", estimated: true },
     quotaEndpoint: false,
     notes: "Inoffizieller HTML-Scrape: kein Kontingent, aber Bot-Detection möglich. Als letzte Instanz gedacht.",
   },

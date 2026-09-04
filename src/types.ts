@@ -28,9 +28,20 @@ export interface EngineContext {
 }
 
 export interface RemoteQuota {
+  /** True when local estimated consumption was added to the provider snapshot. */
+  estimated?: boolean;
   used?: number;
   limit?: number;
   remaining?: number;
+}
+
+export interface QuotaPolicy {
+  period: "day" | "month" | "ip";
+  unit: "requests" | "credits";
+  limit?: number;
+  timeZone?: string;
+  estimated?: boolean;
+  costs?: Partial<Record<Capability, number>>;
 }
 
 export interface EngineMeta {
@@ -43,6 +54,7 @@ export interface EngineMeta {
   capabilities: Capability[];
   /** Typisches Gratis-Monatskontingent für die lokale Zählung; 0 = kein festes Limit */
   monthlyFree: number;
+  quota?: QuotaPolicy;
   /** true = Restkontingent per Anbieter-API abrufbar */
   quotaEndpoint: boolean;
   /** Zusätzliche Konfigfelder (z. B. Google CX) */
@@ -53,6 +65,7 @@ export interface EngineMeta {
 
 export interface EngineAdapter {
   meta: EngineMeta;
+  estimateCost?(kind: Capability, input: SearchInput | FetchInput): number;
   search?(input: SearchInput, ctx: EngineContext): Promise<SearchOutcome>;
   fetchUrl?(input: FetchInput, ctx: EngineContext): Promise<string>;
   remoteQuota?(ctx: EngineContext): Promise<RemoteQuota>;

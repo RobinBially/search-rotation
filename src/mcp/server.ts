@@ -1,16 +1,28 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { SearchRouter } from "../router.js";
+import { RouterError, type SearchRouter } from "../router.js";
 import type { StatusRow } from "../status.js";
 import { VERSION } from "../version.js";
 
 export interface McpDeps {
   router: SearchRouter;
+  /** Bound only to this HTTP request; stdio uses the MCP cancellation signal. */
+  requestSignal?: AbortSignal;
   status(): Promise<StatusRow[]>;
   month(): string;
   /** null = Dashboard deaktiviert (--no-dashboard) */
   dashboardUrl(): string | null;
   openDashboard(): void;
+}
+
+async function withRouterDiagnostics<T>(operation: Promise<T>): Promise<T> {
+  try { return await operation; }
+  catch (error) {
+    if (error instanceof RouterError && error.attempts.length) {
+      throw new Error(`${error.message}\n${error.attempts.map(a => `${a.engine}: ${a.error ?? (a.ok ? "ok" : "fehlgeschlagen")}`).join("\n")}`);
+    }
+    throw error;
+  }
 }
 
 export function buildMcpServer(deps: McpDeps): McpServer {
@@ -28,8 +40,8 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         engine: z.string().optional().describe("Preferred engine id; failover to the other engines stays active"),
       },
     },
-    async ({ query, numResults, engine }) => {
-      const r = await deps.router.search({ query, numResults }, { preferEngine: engine });
+    async ({ query, numResults, engine }, extra) => {
+      const r = await withRouterDiagnostics(deps.router.search({ query, numResults }, { preferEngine: engine, signal: deps.requestSignal ? AbortSignal.any([extra.signal, deps.requestSignal]) : extra.signal }));
       const lines = r.items.map((it, i) => {
         const snip = it.snippet ? `\n   ${it.snippet.replace(/\s+/g, " ").slice(0, 400)}` : "";
         return `${i + 1}. ${it.title}\n   ${it.url}${snip}`;
@@ -52,8 +64,8 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         url: z.string().url().describe("URL to fetch"),
       },
     },
-    async ({ url }) => {
-      const r = await deps.router.fetchUrl({ url });
+    async ({ url }, extra) => {
+      const r = await withRouterDiagnostics(deps.router.fetchUrl({ url }, { signal: deps.requestSignal ? AbortSignal.any([extra.signal, deps.requestSignal]) : extra.signal }));
       const MAX = 50_000;
       const text =
         r.markdown.length > MAX
@@ -79,7 +91,16 @@ export function buildMcpServer(deps: McpDeps): McpServer {
       const lines = rows.map((row) => {
         const state = row.enabled ? "aktiv" : "aus";
         let quota = "kein festes Limit";
-        if (row.remote?.limit) {
+        if (row.quota) {
+          const q = row.quota;
+          const unit = q.unit === "credits" ? "Credits" : "Requests";
+          const period = q.period === "day" ? "Tag" : "Monat";
+          const source = q.source === "local" ? "lokal" : q.source === "remote" ? "remote" : "Quelle unbekannt";
+          const details = [source, ...(q.estimated ? ["geschätzt"] : []), ...(q.timeZone ? [q.timeZone] : [])].join(", ");
+          quota = q.period === "ip"
+            ? `IP-basiert: Kontingent unbekannt (${details})`
+            : `${q.used ?? "?"}/${q.limit ?? "unbekannt"} ${unit}/${period} (${details})`;
+        } else if (row.remote?.limit) {
           quota = `remote: ${row.remote.used ?? "?"}/${row.remote.limit}`;
         } else if (row.monthlyLimit > 0) {
           quota = `${row.used.search + row.used.fetch}/${row.monthlyLimit} (lokal gezählt)`;

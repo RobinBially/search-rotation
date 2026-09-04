@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { EngineAdapter, EngineContext, FetchInput, SearchInput, SearchItem, SearchOutcome } from "../types.js";
-import { cap, httpJson, NeedsKeyError } from "./base.js";
+import { cap, httpJson } from "./base.js";
 import { VERSION } from "../version.js";
 
 const SIGNUP = "https://dashboard.exa.ai";
@@ -12,12 +12,22 @@ const EXA_MCP_URL = "https://mcp.exa.ai/mcp";
  * nutzbar und bietet Suche (web_search_exa) und Fetch (web_fetch_exa).
  * Pro Aufruf eine eigene Client-Session — einfach und robust.
  */
-async function withExaMcp<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+async function withExaMcp<T>(ctx: EngineContext, timeoutMs: number, fn: (client: Client, signal: AbortSignal) => Promise<T>): Promise<T> {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal = ctx.signal ? AbortSignal.any([ctx.signal, timeout]) : timeout;
+  signal.throwIfAborted();
   const client = new Client({ name: "search-rotation", version: VERSION });
-  const transport = new StreamableHTTPClientTransport(new URL(EXA_MCP_URL));
+  const transport = new StreamableHTTPClientTransport(new URL(EXA_MCP_URL), {
+    // Der SDK-Request-Abbruch allein beendet keinen hängenden HTTP-Handshake.
+    fetch: (input, init) => {
+      const inputSignal = input instanceof Request ? input.signal : undefined;
+      const signals = [signal, init?.signal, inputSignal].filter((s): s is AbortSignal => Boolean(s));
+      return fetch(input, { ...init, signal: AbortSignal.any(signals) });
+    },
+  });
   try {
-    await client.connect(transport);
-    return await fn(client);
+    await client.connect(transport, { signal, timeout: timeoutMs });
+    return await fn(client, signal);
   } finally {
     await client.close().catch(() => {});
   }
@@ -92,11 +102,11 @@ async function directFetch(input: FetchInput, ctx: EngineContext): Promise<strin
 async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOutcome> {
   // Mit Key: direkte API. Ohne Key: gehosteter Exa-MCP (IP-basiert, gratis).
   if (!ctx.apiKey) {
-    const text = await withExaMcp(async (client) => {
+    const text = await withExaMcp(ctx, 30_000, async (client, signal) => {
       const res: any = await client.callTool(
         { name: "web_search_exa", arguments: { query: input.query, numResults: cap(input.numResults) } },
         undefined,
-        { timeout: 30_000 },
+        { timeout: 30_000, signal },
       );
       if (res?.isError) throw new Error(`exa-mcp: ${mcpText(res).slice(0, 200)}`);
       return mcpText(res);
@@ -110,11 +120,11 @@ async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOut
 
 async function fetchUrl(input: FetchInput, ctx: EngineContext): Promise<string> {
   if (!ctx.apiKey) {
-    const text = await withExaMcp(async (client) => {
+    const text = await withExaMcp(ctx, 45_000, async (client, signal) => {
       const res: any = await client.callTool(
         { name: "web_fetch_exa", arguments: { urls: [input.url], maxCharacters: 50_000 } },
         undefined,
-        { timeout: 45_000 },
+        { timeout: 45_000, signal },
       );
       if (res?.isError) throw new Error(`exa-mcp: ${mcpText(res).slice(0, 200)}`);
       return mcpText(res);
@@ -134,6 +144,7 @@ export const EXA: EngineAdapter = {
     keyless: "ip",
     capabilities: ["search", "fetch"],
     monthlyFree: 1400,
+    quota: { period: "month", unit: "requests", limit: 1400, estimated: true },
     quotaEndpoint: false,
     notes:
       "Ohne Key: automatisch über gehosteten Exa-MCP (mcp.exa.ai, IP-basiert limitiert) — Suche und Fetch. Mit Key: direkte API mit $10 Gratis-Guthaben/Monat (≈1.400 Suchen), Zähler läuft lokal, kein Quota-Endpunkt.",

@@ -69,6 +69,7 @@ export const PARALLEL: EngineAdapter = {
     keyless: "no",
     capabilities: ["search", "fetch"],
     monthlyFree: 5000,
+    quota: { period: "month", unit: "requests", limit: 5000, estimated: true },
     quotaEndpoint: false,
     notes:
       "5.000 Requests/Monat gratis + zusätzlich $5 Guthaben/Monat. Kein Quota-Endpunkt — Zähler läuft lokal, Kontrollblick im Parallel-Dashboard.",

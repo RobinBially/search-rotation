@@ -1171,3 +1171,9 @@ a.signup:hover { text-decoration: underline; }
   }
   html { scroll-behavior: auto; }
 }
+
+.settings-panel { padding: 18px; margin-bottom: 18px; }
+.settings-panel h2 { margin: 0 0 14px; font-size: 16px; }
+.settings-panel p { max-width: 80ch; line-height: 1.5; }
+.settings-check { display: flex; align-items: center; gap: 8px; }
+.settings-panel input[type="number"] { width: 125px; margin: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }

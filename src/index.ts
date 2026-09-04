@@ -10,13 +10,14 @@ import { ConfigStore, configDir } from "./config.js";
 import { ADAPTERS, SEARCH_ORDER, FETCH_ORDER, DEFAULT_ENABLED, KNOWN_IDS } from "./engines/index.js";
 import { UsageStore } from "./usage.js";
 import { HistoryStore } from "./history.js";
-import { SearchRouter } from "./router.js";
+import { SearchRouter, RouterError } from "./router.js";
 import { buildStatus, clearRemoteQuotaCache } from "./status.js";
 import { buildMcpServer } from "./mcp/server.js";
 import { mountMcpHttp } from "./mcp/http.js";
 import { buildWebApp } from "./web/app.js";
 import type { TestResult } from "./types.js";
 import { VERSION } from "./version.js";
+import { mountSecurity } from "./web/security.js";
 
 function findFreePort(start: number, host: string, tries = 20): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -38,12 +39,14 @@ function findFreePort(start: number, host: string, tries = 20): Promise<number> 
 
 function openBrowser(url: string): void {
   try {
-    if (process.platform === "darwin") spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
-    else if (process.platform === "win32")
-      spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref();
-    else spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
+    const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
+    const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+    const child = spawn(command, args, { detached: true, stdio: "ignore" });
+    // spawn failures arrive asynchronously; never log the one-time login URL.
+    child.on("error", () => console.error("[search-rotation] Browser konnte nicht geöffnet werden; Dashboard-URL manuell öffnen."));
+    child.unref();
   } catch {
-    /* nicht fatal */
+    console.error("[search-rotation] Browser konnte nicht geöffnet werden; Dashboard-URL manuell öffnen.");
   }
 }
 
@@ -53,6 +56,7 @@ async function main(): Promise<void> {
       http: { type: "boolean", default: false },
       port: { type: "string" },
       host: { type: "string" },
+      "public-origin": { type: "string" },
       token: { type: "string" },
       open: { type: "boolean", default: false },
       "no-dashboard": { type: "boolean", default: false },
@@ -74,67 +78,32 @@ async function main(): Promise<void> {
   const month = () => usage.monthKey();
   const status = () => buildStatus(cfg, usage, ADAPTERS);
 
-  const testEngine = async (id: string, kind: "search" | "fetch", arg: string): Promise<TestResult> => {
-    const adapter = ADAPTERS.find((a) => a.meta.id === id);
+  const testEngine = async (id: string, kind: "search" | "fetch", arg: string, signal?: AbortSignal): Promise<TestResult> => {
+    const adapter = ADAPTERS.find(a => a.meta.id === id);
     if (!adapter) return { ok: false, ms: 0, error: "unbekannte Engine" };
-    const e = cfg.engines.find((x) => x.id === id);
-    const ctx = { apiKey: e?.apiKey, extra: e?.extra };
-    const t0 = Date.now();
+    if (kind === "search" && !adapter.search) return { ok: false, ms: 0, error: "Engine kann nicht suchen" };
+    if (kind === "fetch" && !adapter.fetchUrl) return { ok: false, ms: 0, error: "Engine kann nicht fetchen" };
+    const start = Date.now();
     try {
       if (kind === "search") {
-        if (!adapter.search) return { ok: false, ms: 0, error: "Engine kann nicht suchen" };
-        const out = await adapter.search({ query: arg || "model context protocol", numResults: 3 }, ctx);
-        usage.record(id, "search");
-        history.record({
-          kind: "search",
-          input: arg || "model context protocol",
-          engine: id,
-          ok: true,
-          ms: Date.now() - t0,
-          attempts: [],
-          result: { count: out.items.length, items: out.items },
-        });
-        return {
-          ok: true,
-          ms: Date.now() - t0,
-          count: out.items.length,
-          preview: out.items
-            .slice(0, 3)
-            .map((i) => `${i.title} — ${i.url}`)
-            .join("\n"),
-        };
+        const out = await router.search({ query: arg || "model context protocol", numResults: 3 }, { onlyEngine: id, signal });
+        return { ok: true, ms: Date.now() - start, count: out.items.length,
+          preview: out.items.slice(0, 3).map(item => `${item.title} — ${item.url}`).join("\n") };
       }
-      if (!adapter.fetchUrl) return { ok: false, ms: 0, error: "Engine kann nicht fetchen" };
-      const md = await adapter.fetchUrl({ url: arg || "https://example.com" }, ctx);
-      usage.record(id, "fetch");
-      history.record({
-        kind: "fetch",
-        input: arg || "https://example.com",
-        engine: id,
-        ok: true,
-        ms: Date.now() - t0,
-        attempts: [],
-        result: { chars: md.length, markdown: md },
-      });
-      return { ok: true, ms: Date.now() - t0, chars: md.length, preview: md.slice(0, 400) };
+      const out = await router.fetchUrl({ url: arg || "https://example.com" }, { onlyEngine: id, signal });
+      return { ok: true, ms: Date.now() - start, chars: out.markdown.length, preview: out.markdown.slice(0, 400) };
     } catch (err) {
+      const detail = err instanceof RouterError ? err.attempts.map(a => a.error).filter(Boolean).join("; ") : "";
       const message = err instanceof Error ? err.message : String(err);
-      history.record({
-        kind,
-        input: arg,
-        engine: id,
-        ok: false,
-        ms: Date.now() - t0,
-        attempts: [],
-        error: message,
-      });
-      return { ok: false, ms: Date.now() - t0, error: message };
+      return { ok: false, ms: Date.now() - start, error: detail || message };
     }
   };
 
   const token = args.token ?? process.env.SEARCH_ROTATION_TOKEN ?? cfg.settings.token;
   const host = args.host ?? "127.0.0.1";
   const dashboardEnabled = !args["no-dashboard"];
+  const loopback = ["127.0.0.1", "localhost", "::1"].includes(host);
+  if (!loopback && !token) throw new Error("Remote-Bind benötigt --token oder SEARCH_ROTATION_TOKEN");
   // HTTP-Server nötig für das Dashboard UND für --http — sonst hat der Prozess
   // kein Keep-Alive-Handle und beendet sich sofort (--http --no-dashboard-Fix).
   const httpNeeded = dashboardEnabled || args.http;
@@ -145,36 +114,22 @@ async function main(): Promise<void> {
       : cfg.settings.port;
   const port = httpNeeded ? await findFreePort(basePort, host) : 0;
 
-  const dashboardUrl = (): string | null =>
-    dashboardEnabled
-      ? `http://${host}:${port}/` + (token ? `?token=${encodeURIComponent(token)}` : "")
-      : null;
-
+  const browserHost = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
+  const localOrigin = `http://${browserHost.includes(":") ? `[${browserHost}]` : browserHost}:${port}`;
+  const publicOrigin = args["public-origin"] ? new URL(args["public-origin"]) : new URL(localOrigin);
+  if (!["http:", "https:"].includes(publicOrigin.protocol) || publicOrigin.username || publicOrigin.password || publicOrigin.search || publicOrigin.hash || publicOrigin.pathname !== "/") {
+    throw new Error("--public-origin muss eine HTTP(S)-Origin ohne Pfad, Zugangsdaten oder Query sein");
+  }
+  const origin = publicOrigin.origin;
+  const dashboardUrl = (): string | null => dashboardEnabled ? `${origin}/` : null;
+  const app = new Hono();
+  const security = mountSecurity(app, { token, origin, additionalOrigins: [localOrigin], dashboardEnabled });
   const mcpDeps = {
-    router,
-    status,
-    month,
-    dashboardUrl,
+    router, status, month, dashboardUrl,
     openDashboard: () => {
-      const url = dashboardUrl();
-      if (url) openBrowser(url);
+      if (dashboardEnabled) openBrowser(security.browserUrl());
     },
   };
-
-  const app = new Hono();
-
-  // Optionaler Token-Schutz für Dashboard, API und /mcp (z. B. bei Remote-Betrieb)
-  if (token) {
-    app.use("*", async (c, next) => {
-      const url = new URL(c.req.url);
-      const provided =
-        c.req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? url.searchParams.get("token") ?? "";
-      if (provided !== token) {
-        return c.text("401 — Token fehlt oder falsch (URL mit ?token=… öffnen oder Authorization: Bearer setzen)", 401);
-      }
-      await next();
-    });
-  }
 
   app.route(
     "/",
@@ -195,7 +150,7 @@ async function main(): Promise<void> {
       historyClear: () => history.clear(),
     }),
   );
-  mountMcpHttp(app, mcpDeps);
+  mountMcpHttp(app, mcpDeps, security);
 
   if (httpNeeded) {
     const srv = serve({ fetch: app.fetch, port, hostname: host });
@@ -230,7 +185,7 @@ async function main(): Promise<void> {
     );
   }
 
-  if (args.open && dashboardEnabled) openBrowser(dashboardUrl()!);
+  if (args.open && dashboardEnabled) mcpDeps.openDashboard();
 }
 
 main().catch((err: unknown) => {

@@ -45,7 +45,7 @@ async function fetchUrl(input: FetchInput, ctx: EngineContext): Promise<string> 
 }
 
 async function remoteQuota(ctx: EngineContext): Promise<RemoteQuota> {
-  const j = await httpJson<any>(`${BASE}/team/credit-usage`, { headers: bearer(ctx.apiKey) });
+  const j = await httpJson<any>(`${BASE}/team/credit-usage`, { headers: bearer(ctx.apiKey) }, { signal: ctx.signal });
   // Response: { success, data: { remainingCredits, planCredits, billingPeriodStart, billingPeriodEnd } }
   const d = j?.data ?? {};
   const limit = pickNum(d.planCredits);
@@ -73,10 +73,12 @@ export const FIRECRAWL: EngineAdapter = {
     keyless: "ip",
     capabilities: ["search", "fetch"],
     monthlyFree: 1000,
+    quota: { period: "month", unit: "credits", limit: 1000, estimated: true, costs: { search: 2, fetch: 1 } },
     quotaEndpoint: true,
     notes:
       "1.000 Credits/Monat gratis (mit Konto). Quota per API abrufbar; Reset nach Billing-Periode (Kontostand zählt Remote), nicht am Kalendermonat. Ohne Key nur wenige IP-basierte Requests.",
   },
+  estimateCost: (kind, input) => kind === "search" ? 2 * Math.ceil(cap((input as SearchInput).numResults) / 10) : 1,
   search,
   fetchUrl,
   remoteQuota,

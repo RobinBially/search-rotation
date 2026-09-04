@@ -14,6 +14,9 @@ export interface Settings {
   token: string;
   /** Überschreibt das Standard-Kontingent pro Engine (lokale Zählung) */
   monthlyLimits: Record<string, number>;
+  dailyLimits?: Record<string, number>;
+  strictFreeMode?: boolean;
+  requestTimeoutMs?: number;
 }
 
 export interface PolyConfig {
@@ -97,6 +100,9 @@ export function normalizeConfig(raw: unknown, d: ConfigDefaults): PolyConfig {
       port: Number.isInteger(s.port) && s.port >= 1024 && s.port <= 65535 ? s.port : 6277,
       token: typeof s.token === "string" ? s.token : "",
       monthlyLimits,
+      dailyLimits: Object.fromEntries(Object.entries(s.dailyLimits ?? {}).filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0)) as Record<string, number>,
+      strictFreeMode: s.strictFreeMode === true,
+      requestTimeoutMs: Number.isInteger(s.requestTimeoutMs) && s.requestTimeoutMs >= 1000 && s.requestTimeoutMs <= 300_000 ? s.requestTimeoutMs : 60_000,
     },
   };
 }

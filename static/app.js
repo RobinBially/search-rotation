@@ -120,6 +120,16 @@ function bar(pct, extraCls) {
 
 function quotaHtml(st) {
   if (!st || !st.id) return "";
+  if (st.quota) {
+    const q = st.quota;
+    if (q.limit === null || q.used === null) {
+      return '<span class="quota-none">' + esc(t(q.period === "ip" ? "quota.unknown" : "quota.none")) + "</span>";
+    }
+    const pct = q.limit > 0 ? Math.max(0, Math.round(100 * (q.limit - q.used) / q.limit)) : 100;
+    const label = q.used + " / " + q.limit + " " + t("quota.unit." + q.unit) + " · " + t("quota.period." + q.period) +
+      " · " + t("quota.source." + q.source) + (q.estimated ? " · " + t("quota.estimated") : "");
+    return bar(pct) + '<span class="quota-label">' + esc(label) + "</span>";
+  }
   if (st.remoteError) return '<span class="quota-err">' + esc(t("quota.error", { error: st.remoteError })) + "</span>";
   if (st.remote && st.remote.limit) {
     const rem = st.remote.remaining !== undefined ? st.remote.remaining : st.remote.limit - (st.remote.used || 0);
@@ -134,14 +144,14 @@ function quotaHtml(st) {
   return '<span class="quota-none">' + esc(t("quota.none")) + "</span>";
 }
 
-function ringGauge(pct) {
+function ringGauge(pct, unknown = false) {
   const r = 21, c = 2 * Math.PI * r;
   if (pct === null || pct === undefined) {
     // Kein festes Kontingent: neutraler Ring mit ∞
     return (
       '<div class="gauge"><svg width="52" height="52" viewBox="0 0 52 52">' +
       '<circle class="track" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5"/></svg>' +
-      '<span class="gauge-val inf">∞</span></div>'
+      '<span class="gauge-val inf">' + (unknown ? '?' : '∞') + '</span></div>'
     );
   }
   const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
@@ -156,23 +166,16 @@ function ringGauge(pct) {
 
 /* ---------- Token & API ---------- */
 
-const params = new URLSearchParams(location.search);
-if (params.get("token")) {
-  localStorage.setItem("sr_token", params.get("token"));
-  params.delete("token");
-  history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params.toString() : ""));
-}
-
 async function api(path, opts = {}) {
-  const token = localStorage.getItem("sr_token") || "";
   const res = await fetch(path, {
     method: opts.method || "GET",
-    headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) },
+    headers: { "content-type": "application/json" },
+    credentials: "same-origin",
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   if (res.status === 401) {
     state.unauthorized = true;
-    $("#view").innerHTML = '<div class="auth-error"><div><p style="font-size:34px;margin:0 0 10px">🔒</p>' + t("api.unauthorized") + "</div></div>";
+    $("#view").innerHTML = '<div class="auth-error"><div><p style="font-size:34px;margin:0 0 10px">🔒</p>' + t("api.unauthorized") + '<p><a href="/login">Anmelden / Sign in</a></p></div></div>';
     throw new Error("unauthorized");
   }
   const data = await res.json().catch(() => ({}));
@@ -326,7 +329,9 @@ function rotationHtml() {
         '<span class="rot-pos">' + (e.searchPosition + 1) + "</span>" +
         engineLogoHtml(e) +
         '<span class="rot-name">' + esc(e.label || e.id) + "</span>" +
-        bar(remainingPctOf(e) ?? 100, "accent") +
+        (e.quota?.period === "ip" && e.quota.limit === null
+          ? '<span class="muted">' + esc(t("quota.unknown")) + "</span>"
+          : bar(remainingPctOf(e) ?? 100, "accent")) +
         '<svg class="rot-arrow" width="15" height="15"><use href="#i-arrow"/></svg></a>',
     )
     .join("");
@@ -336,10 +341,13 @@ function healthHtml() {
   return sortedEngines()
     .map((e) => {
       const pct = remainingPctOf(e);
-      const src = e.remote && e.remote.limit ? t("health.source.remote") : e.monthlyLimit > 0 ? t("health.source.local") : t("health.source.none");
+      const unknown = e.quota?.period === "ip" && e.quota.limit === null;
+      const src = e.quota
+        ? unknown ? t("quota.unknown") : t("quota.period." + e.quota.period) + " · " + t("quota.source." + e.quota.source) + (e.quota.estimated ? " · " + t("quota.estimated") : "")
+        : e.remote && e.remote.limit ? t("health.source.remote") : e.monthlyLimit > 0 ? t("health.source.local") : t("health.source.none");
       return (
         '<a class="health-card' + (e.enabled ? "" : " off") + '" href="#/engines">' +
-        ringGauge(pct) +
+        ringGauge(pct, unknown) +
         '<span class="health-meta"><span class="health-name">' + esc(e.label || e.id) + "</span>" +
         '<span class="health-src">' + (e.enabled ? esc(src) : esc(t("health.off"))) + "</span></span></a>"
       );
@@ -482,10 +490,22 @@ function renderSnippets() {
 
 /* ---------- View: Engines ---------- */
 
+function settingsHtml() {
+  const settings = state.config.settings;
+  return '<div class="panel settings-panel"><h2>' + esc(t("settings.title")) + '</h2>' +
+    '<label class="settings-check"><input id="strict-free" type="checkbox"' + (settings.strictFreeMode ? " checked" : "") + '> ' + esc(t("settings.strict")) + '</label>' +
+    '<p class="muted">' + esc(t("settings.strictHelp")) + '</p>' +
+    '<label for="request-timeout">' + esc(t("settings.timeout")) + '</label> ' +
+    '<input id="request-timeout" type="number" min="1000" max="300000" step="1000" value="' + (settings.requestTimeoutMs ?? 60000) + '">' +
+    '<button class="btn" data-act="save-settings">' + esc(t("btn.save")) + '</button></div>';
+}
+
 function renderEngines() {
   const wrap = $("#view");
   // Ungespeicherte Eingaben über das Re-Render retten
   const saved = {};
+  const strictDraft = wrap.querySelector("#strict-free")?.checked;
+  const timeoutDraft = wrap.querySelector("#request-timeout")?.value;
   wrap.querySelectorAll(".keyinput").forEach((el) => {
     if (el.value) saved["key:" + el.dataset.id] = el.value;
   });
@@ -534,7 +554,7 @@ function renderEngines() {
         extras +
         '<div class="drawer-meta"><span class="caps-chips">' + caps + "</span>" +
         '<a class="signup" href="' + esc(e.signupUrl || e.homepage || "#") + '" target="_blank" rel="noreferrer">' + esc(t("signup")) + ' <svg width="12" height="12"><use href="#i-external"/></svg></a>' +
-        '<button class="btn" data-act="test"><svg width="13" height="13"><use href="#i-zap"/></svg> Test</button></div>' +
+        (e.capabilities || []).map((kind) => '<button class="btn" data-act="test" data-kind="' + kind + '"><svg width="13" height="13"><use href="#i-zap"/></svg> Test: ' + esc(t("cap." + kind)) + "</button>").join("") + "</div>" +
         '<div class="testout" data-testout="' + esc(e.id) + '"></div>' +
         (e.notes ? '<div class="notes">' + esc(e.notes) + "</div>" : "") +
         "</div></div>"
@@ -545,6 +565,7 @@ function renderEngines() {
   wrap.innerHTML =
     '<div class="page">' +
     pageHead(t("engines.title"), t("engines.sub")) +
+    settingsHtml() +
     (anyKeySet() ? "" : '<div class="banner"><svg width="16" height="16"><use href="#i-alert"/></svg><span>' + esc(t("notice.nokeys")) + "</span></div>") +
     '<div style="margin-bottom:14px"><span class="engines-stat"><span class="dot"></span>' +
     esc(t("engines.stat", { in: inRotation, keys, total: engines.length })) +
@@ -552,6 +573,8 @@ function renderEngines() {
     '<div class="engine-list">' + cards + "</div></div>";
 
   // Gesicherte Eingaben zurückschreiben
+  if (strictDraft !== undefined) wrap.querySelector("#strict-free").checked = strictDraft;
+  if (timeoutDraft !== undefined) wrap.querySelector("#request-timeout").value = timeoutDraft;
   wrap.querySelectorAll(".keyinput").forEach((el) => {
     const v = saved["key:" + el.dataset.id];
     if (v) el.value = v;
@@ -562,31 +585,14 @@ function renderEngines() {
   });
 }
 
-/** FLIP: Positionen vor/nach dem Re-Render animieren. */
-function flipReorder(container, from, to) {
-  const before = new Map();
-  container.querySelectorAll("[data-id]").forEach((el) => before.set(el.dataset.id, el.getBoundingClientRect().top));
-
-  const list = state.config.engines;
-  const i = list.findIndex((e) => e.id === from);
-  const j = list.findIndex((e) => e.id === to);
-  if (i < 0 || j < 0) return;
-  list.splice(j, 0, list.splice(i, 1)[0]);
-  renderEngines();
-
-  container.querySelectorAll("[data-id]").forEach((el) => {
-    const prev = before.get(el.dataset.id);
-    if (prev === undefined) return;
-    const dy = prev - el.getBoundingClientRect().top;
-    if (Math.abs(dy) < 2) return;
-    el.style.transition = "none";
-    el.style.transform = "translateY(" + dy + "px)";
-    requestAnimationFrame(() => {
-      el.classList.add("flip-anim");
-      el.style.transition = "";
-      el.style.transform = "";
-      setTimeout(() => el.classList.remove("flip-anim"), 320);
-    });
+/** Speichert eine Drag-Operation auf der zuletzt bestätigten Konfiguration. */
+function queueReorder(from, to) {
+  return queuePut((cfg) => {
+    const engines = cfg.engines.map((e) => ({ id: e.id, enabled: e.enabled }));
+    const i = engines.findIndex((e) => e.id === from);
+    const j = engines.findIndex((e) => e.id === to);
+    if (i >= 0 && j >= 0) engines.splice(j, 0, engines.splice(i, 1)[0]);
+    return { engines, fetchOrder: cfg.fetchOrder };
   });
 }
 
@@ -817,12 +823,7 @@ document.addEventListener("drop", (ev) => {
   if (!toEl || !from || from === toEl.dataset.id || state.route !== "/engines") return;
   const container = $(".engine-list");
   if (!container) return;
-  flipReorder(container, from, toEl.dataset.id);
-  queuePut((cfg) => ({
-    engines: cfg.engines.map((e) => ({ id: e.id, enabled: e.enabled })),
-    fetchOrder: cfg.fetchOrder,
-    settings: { port: cfg.settings.port },
-  }));
+  queueReorder(from, toEl.dataset.id);
 });
 
 /* ---------- Events (delegiert) ---------- */
@@ -830,14 +831,27 @@ document.addEventListener("drop", (ev) => {
 document.addEventListener("change", (ev) => {
   if (!ev.target.matches || !ev.target.matches('input[data-act="toggle"]')) return;
   const id = ev.target.closest("[data-id]").dataset.id;
+  const enabled = ev.target.checked;
   queuePut((cfg) => ({
-    engines: cfg.engines.map((e) => (e.id === id ? { id, enabled: ev.target.checked } : { id: e.id, enabled: e.enabled })),
+    engines: cfg.engines.map((e) => (e.id === id ? { id, enabled } : { id: e.id, enabled: e.enabled })),
     fetchOrder: cfg.fetchOrder,
     settings: { port: cfg.settings.port },
   }));
 });
 
 document.addEventListener("click", async (ev) => {
+  if (ev.target.closest('[data-act="save-settings"]')) {
+    const timeoutInput = $("#request-timeout");
+    if (!timeoutInput.checkValidity()) { timeoutInput.reportValidity(); return; }
+    const strictFreeMode = $("#strict-free").checked;
+    const requestTimeoutMs = Number(timeoutInput.value);
+    await queuePut((cfg) => ({
+      engines: cfg.engines.map((e) => ({ id: e.id, enabled: e.enabled })),
+      settings: { strictFreeMode, requestTimeoutMs },
+    }));
+    return;
+  }
+
   // Kopieren-Buttons
   const copyBtn = ev.target.closest("button[data-copy]");
   if (copyBtn) {
@@ -901,9 +915,9 @@ document.addEventListener("click", async (ev) => {
 
   try {
     if (act === "save-key") {
-      const input = host.querySelector(".keyinput");
+      const value = host.querySelector(".keyinput").value;
       queuePut((cfg) => ({
-        engines: cfg.engines.map((e) => (e.id === id ? { id, enabled: e.enabled, apiKey: input.value } : { id: e.id, enabled: e.enabled })),
+        engines: cfg.engines.map((e) => (e.id === id ? { id, enabled: e.enabled, apiKey: value } : { id: e.id, enabled: e.enabled })),
         fetchOrder: cfg.fetchOrder,
         settings: { port: cfg.settings.port },
       }));
@@ -927,10 +941,13 @@ document.addEventListener("click", async (ev) => {
     } else if (act === "test") {
       const out = document.querySelector('[data-testout="' + CSS.escape(id) + '"]');
       out.innerHTML = '<span class="muted">' + esc(t("test.running")) + "</span>";
-      const r = await api("/api/test", { method: "POST", body: { id, kind: "search" } });
+      const capabilities = statusOf(id).capabilities || [];
+      const kind = capabilities.includes(btn.dataset.kind) ? btn.dataset.kind : capabilities[0];
+      if (!kind) throw new Error("Keine testbare Fähigkeit");
+      const r = await api("/api/test", { method: "POST", body: { id, kind } });
       if (r.ok) {
         out.innerHTML =
-          '<span class="ok">✓ ' + esc(t("test.ok", { count: r.count, ms: fmtMs(r.ms) })) + "</span>" +
+          '<span class="ok">✓ ' + esc(kind === "fetch" ? t("test.fetchOk", { chars: r.chars, ms: fmtMs(r.ms) }) : t("test.ok", { count: r.count, ms: fmtMs(r.ms) })) + "</span>" +
           (r.preview ? "<pre>" + esc(r.preview) + "</pre>" : "");
       } else {
         out.innerHTML = '<span class="error">✗ ' + esc(r.error) + "</span>";

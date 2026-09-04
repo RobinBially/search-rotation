@@ -170,7 +170,7 @@ test("record zählt search/fetch getrennt; Fehler gehen in errors, nicht in sear
   assert.equal(s.get("nope").lastError, undefined);
 });
 
-test("Mehrere Prozesse: record liest neu, get() zeigt den Stand bis zum nächsten record", () => {
+test("Mehrere Prozesse: get() zeigt Änderungen anderer Instanzen sofort", () => {
   const dir = tmpDir();
   const s1 = new UsageStore(dir);
   s1.record("a", "search");
@@ -179,8 +179,8 @@ test("Mehrere Prozesse: record liest neu, get() zeigt den Stand bis zum nächste
   const s2 = new UsageStore(dir);
   assert.equal(s2.get("a").search, 1);
   s2.record("a", "search"); // Datei hat jetzt 2
-  // Design: get() liest NICHT neu (nur record tut es) → s1 sieht den Zweitprozess-Stand erst nach dem nächsten record.
-  assert.equal(s1.get("a").search, 1);
+  // Auch reine Leser übernehmen neue Snapshots.
+  assert.equal(s1.get("a").search, 2);
   s1.record("a", "fetch"); // lädt neu und schreibt
   assert.equal(s1.get("a").search, 2);
   assert.equal(s1.get("a").fetch, 1);
@@ -680,7 +680,9 @@ test("buildStatus: Remote-Quota wird geliefert, hat Vorrang und wird 5 Min gecac
   assert.equal(a.monthlyLimit, 1000); // meta.monthlyFree, kein Override
   assert.equal(a.used.search, 500);
   assert.deepEqual(a.extrasSet, { cx: true });
-  assert.deepEqual(remoteA.lastCtx, { apiKey: "sk-live-a", extra: { cx: "x" } });
+  assert.equal(remoteA.lastCtx?.apiKey, "sk-live-a");
+  assert.deepEqual(remoteA.lastCtx?.extra, { cx: "x" });
+  assert.ok(remoteA.lastCtx?.signal instanceof AbortSignal);
 
   const b = rows1[1];
   assert.equal(b.enabled, false);
@@ -833,14 +835,9 @@ test("normalizeConfig: extra-Felder (nur Strings), apiKey-Trimming, enabled-Defa
   assert.equal(c.engines.find((e) => e.id === "google-cse")?.enabled, false); // defaultEnabled greift
 });
 
-// ── BUG-Dokumentationen (skipped — Suite muss grün bleiben) ─────────────────
+// ── Regressionen für sanierte Config- und Verbrauchsdaten ─────────────────
 
-test.skip("FIXED — BUG: Doppelte Engine-Ids in der Config führen zu doppelten Versuchen derselben Engine → Fix: normalizeConfig dedupliziert + seen-Set in chain() (Original-Assertion beschrieb den Bug)", async () => {
-  // normalizeConfig (config.ts) dedupliziert engines nicht — eine hand-editierte
-  // config.json mit zweimal derselben Id wird 1:1 übernommen. router.chain()
-  // baut die Kette aus cfg.engines.map((e) => e.id) ohne Dedup → dieselbe Engine
-  // wird pro Suche mehrfach versucht (doppelte API-Calls, doppelter Usage-Count).
-  // Fix: in normalizeConfig Dubletten entfernen oder in chain() gesehene Ids überspringen.
+test("Doppelte Engine-Ids werden nur einmal versucht", async () => {
   const adapters = [
     fakeAdapter("a", { search: async () => { throw new Error("boom"); } }),
     fakeAdapter("b", { search: () => ok() }),
@@ -853,16 +850,9 @@ test.skip("FIXED — BUG: Doppelte Engine-Ids in der Config führen zu doppelten
   const r = await router.search({ query: "q" });
   assert.equal(r.engine, "b");
   assert.equal(r.attempts.length, 2, "Engine a darf nur einmal pro Suche versucht werden");
-  // Aktuelles Verhalten: attempts = [a, a, b] (Länge 3).
 });
 
-test.skip("FIXED — BUG: Nicht-numerischer Usage-Zähler wirft die Engine komplett aus der Rotation → Fix: UsageStore.load() säubert Zähler strikt + NaN-Guard in computeRemainingPct", async () => {
-  // usage.json mit search: "x" (z. B. manuell korrumpiert) → used.search + used.fetch
-  // = "x0" (String-Concat) → pct = NaN → NaN passt in keinen Bucket
-  // (healthy: > 0.1 false, low: > 0 false, exhausted: <= 0 false) → Engine wird
-  // stillschweigend aus der Kette weggelassen; bei Einzel-Engine folgt die
-  // irreführende Meldung "Keine aktivierte Such-Engine".
-  // Fix: Zähler in UsageStore.load() validieren (oder in computeRemainingPct Number() erzwingen).
+test("Ungültige Verbrauchszähler entfernen keine Engine aus der Rotation", async () => {
   const dir = tmpDir();
   const probe = new UsageStore(dir);
   writeFileSync(
@@ -874,19 +864,12 @@ test.skip("FIXED — BUG: Nicht-numerischer Usage-Zähler wirft die Engine kompl
   const router = new SearchRouter({ getConfig: () => cfg(["a", "b"]), usage, adapters });
   const r = await router.search({ query: "q" });
   assert.equal(r.engine, "a", "Engine a muss versucht werden, trotz kaputten Zählers");
-  // Aktuelles Verhalten: r.engine === "b" (a wird wegen NaN verworfen).
 });
 
-test.skip("FIXED — BUG: usage.json mit Nicht-Objekt-Monatseintrag lässt UsageStore.record() crashen → Fix: load() validiert die komplette Struktur (Original-Assertion beschrieb den Bug)", async () => {
-  // usage.load() validiert nur "ist ein Objekt" auf oberster Ebene. Ein
-  // Monatseintrag wie {"2026-09": "kaputt"} überlebt das. record() macht dann
-  // month[engine] ??= {...} auf einem String → TypeError im Strict Mode. Über den
-  // Router (usage.record im catch-Block) würde das jede fehlgeschlagene Suche
-  // mit einem TypeError statt RouterError beenden. Fix: Shape in load() prüfen
-  // oder in record() vor dem Schreiben auf Objekt validieren.
+test("Ungültige Monatsstruktur wird vor record saniert", async () => {
   const dir = tmpDir();
   const usage = new UsageStore(dir); // Datei fehlt → leer
   writeFileSync(join(dir, "usage.json"), JSON.stringify({ [usage.monthKey()]: "kaputt" }));
-  usage.record("a", "search"); // Aktuell: TypeError "Cannot create property 'a' on string"
+  usage.record("a", "search");
   assert.equal(usage.get("a").search, 1);
 });

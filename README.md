@@ -1,111 +1,174 @@
+<div align="center">
+
 # search-rotation
 
-Websuche als MCP-Server mit **Round Robin über die Gratis-Kontingente mehrerer Such-APIs** — plus Dashboard für Keys, Reihenfolge, Toggles und Kontingent-Überblick.
+**Eine Websuche für deinen MCP-Client. Mehrere Engines im Hintergrund.**
 
-Eine Engine = ~1.000 Gratis-Anfragen/Monat. Sieben Engines rotiert = **~10.000+/Monat**, mit automatischem Failover und Qualität, die über gescrapte SERPs (SearXNG & Co.) deutlich hinausgeht.
+[![CI](https://github.com/RobinBially/search-rotation/actions/workflows/ci.yml/badge.svg)](https://github.com/RobinBially/search-rotation/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/RobinBially/search-rotation?color=8b7cf7)](https://github.com/RobinBially/search-rotation/releases/latest)
+[![Node.js](https://img.shields.io/badge/Node.js-20.3%2B-5dbb93)](https://nodejs.org/)
+[![MIT](https://img.shields.io/badge/Lizenz-MIT-8b9ab4)](LICENSE)
 
-## Engines & Gratis-Kontingente (verifiziert, Stand 2026-09)
+[Loslegen](#in-zwei-minuten-startklar) · [MCP-Clients](#mit-deinem-mcp-client-verbinden) · [Engines](#unterstützte-engines) · [Releases](https://github.com/RobinBially/search-rotation/releases)
 
-| Engine | Suche | Fetch | Gratis/Monat | Quota-Endpunkt | Ohne Key |
-|---|---|---|---|---|---|
-| Tavily | ✅ | ✅ | 1.000 Credits | ✅ `/usage` | ❌ |
-| Firecrawl | ✅ | ✅ | 1.000 Credits | ✅ `credit-usage` | ⚠️ IP-basiert, winzig |
-| Parallel | ✅ | ✅ | **5.000 Requests** + $5 | ❌ | ❌ |
-| Exa | ✅ | ✅ | ~1.400 ($10 Guthaben) | ❌ | ✅ via `mcp.exa.ai` (IP-limitiert) |
-| Google PSE | ✅ | — | ~3.000 (100/Tag) | ❌ | ❌ (Key + CX nötig, standardmäßig aus) |
-| Jina Reader | — | ✅ | unbegrenzt-ish | ❌ | ✅ IP-basiert (~20 RPM) |
-| DuckDuckGo | ✅ | — | unbegrenzt-ish | ❌ | ✅ inoffiziell, zerbrechlich |
+</div>
 
-## Wie die Rotation arbeitet
+![Funktionsgrafik: search-rotation verteilt Anfragen nach verfügbarem Kontingent und wechselt bei Fehlern zur nächsten Engine.](docs/assets/search-rotation.svg)
 
-1. Round Robin startet bei der obersten aktivierten Engine (Reihenfolge im Dashboard).
-2. Engines mit **höchstens 10 % Restkontingent** rutschen ans Ende, **erschöpfte** werden nur noch als letzte Instanz versucht.
-3. Fehler (401/403/429/5xx/Timeout) → nächste Engine, transparent im Ergebnis (`Failover after: …`).
-4. Restkontingent: Remote vom Anbieter (Tavily, Firecrawl — 5 Min Cache), sonst lokal pro Kalendermonat gezählt.
-5. `engine`-Parameter pinnt eine Engine vorne, Failover bleibt aktiv.
+`search-rotation` verbindet **Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina und DuckDuckGo** hinter vier MCP-Tools. Suche und Seitenabruf rotieren unabhängig. Bei einem Ausfall versucht der Server die nächste verfügbare Engine und nennt den Wechsel im Ergebnis.
 
-## Schnellstart (Codex / Claude / Cursor)
+Im lokalen Dashboard verwaltest du API-Keys, sortierst Engines per Drag-and-drop, prüfst Kontingente und siehst den Verlauf. **Installation direkt von GitHub — kein npm-Account nötig.**
 
-Installiert direkt aus GitHub — kein npm-Publish nötig, `prepare` baut `dist` beim Installieren.
-npm 12 blockiert Git-Abhängigkeiten standardmäßig (`EALLOWGIT`) — daher `--allow-git=all` (oder einmalig `npm config set allow-git all`):
+| Für deinen Agenten | Für dich |
+|---|---|
+| Einheitliche Suchtreffer mit Titel, URL und Beschreibung | Dashboard mit Übersicht, Engine-Verwaltung und Verlauf |
+| Webseiten als Markdown | Search und Fetch je Engine getrennt testen |
+| Failover, Cooldowns und Abbruchweitergabe | Kontingentquelle, Zeitraum und Schätzstatus sichtbar |
+| MCP über stdio oder Streamable HTTP | Optionaler Gratis-Modus, Dark/Light Theme und mehrere Sprachen |
 
-```bash
-npx -y --allow-git=all github:RobinBially/search-rotation
+## In zwei Minuten startklar
+
+Voraussetzung: **Node.js ab 20.3** mit npm/npx und Git. Empfohlen ist eine aktuelle LTS-Version.
+
+```sh
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.0
 ```
 
-**Codex** — `~/.codex/config.toml`:
+Damit startest du den stdio-MCP-Server. Für einen ersten Blick auf das Dashboard ohne angeschlossenen MCP-Client:
+
+```sh
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.0 --http --open
+```
+
+1. Dashboard öffnen — standardmäßig **http://127.0.0.1:6277**. Ist der Port belegt, steht die tatsächlich verwendete URL im Log.
+2. Unter **Engines** API-Keys hinterlegen und die gewünschte Reihenfolge einstellen.
+3. Deinen MCP-Client wie unten konfigurieren und eine Websuche starten.
+
+Exa und Firecrawl können ohne Key über IP-Kontingente arbeiten; Jina unterstützt Seitenabrufe ohne Key. Verfügbarkeit und Limits hängen vom Anbieter ab. Eigene Keys ermöglichen planbarere Kontingente.
+
+> npm/npx werden nur für Download und Installation verwendet. **Es gibt keinen npm-Publish und keinen Account-Schritt.** `--allow-git=all` erlaubt den GitHub-Bezug unter npm 12; ältere npm-Versionen können dazu eine Warnung ausgeben. `#v0.3.0` fixiert die Release-Version.
+
+## Mit deinem MCP-Client verbinden
+
+<details open>
+<summary><strong>Codex</strong> — <code>~/.codex/config.toml</code></summary>
 
 ```toml
 [mcp_servers.search-rotation]
 command = "npx"
-args = ["-y", "--allow-git=all", "github:RobinBially/search-rotation"]
+args = ["-y", "--allow-git=all", "github:RobinBially/search-rotation#v0.3.0"]
 ```
 
-**Claude Desktop / Claude Code** — `claude_desktop_config.json`:
+</details>
 
-```json
-{
-  "mcpServers": {
-    "search-rotation": { "command": "npx", "args": ["-y", "--allow-git=all", "github:RobinBially/search-rotation"] }
-  }
-}
-```
-
-**OpenCode V2** — `~/.config/opencode/opencode.json` unter `mcp.servers`:
-
-```jsonc
-"search-rotation": { "type": "local", "command": ["search-rotation"], "codemode": true }
-```
-
-Lokale Entwicklung: `chmod +x dist/index.js && ln -sf "$PWD/dist/index.js" ~/.local/bin/search-rotation` — der Eintrag bleibt über Updates stabil (`git pull && npm install && npm run build` genügt); npx zieht bei jedem Lauf den aktuellen Stand des `main`-Branch.
-
-Der stdio-Server startet **im selben Prozess** ein lokales Dashboard (`http://127.0.0.1:6277`, Link steht im Server-Log; der Agent kann es über das Tool `open_dashboard` öffnen). Dort: Keys hinterlegen, Reihenfolge ziehen, Engines togglen, Kontingente sehen, Engines live testen.
-
-## Remote-Betrieb (Streamable HTTP)
-
-```bash
-npx -y --allow-git=all github:RobinBially/search-rotation --http --port 6277 --token <geheim>
-```
-
-Client-Config (Claude):
+<details>
+<summary><strong>Claude Desktop / Claude Code</strong> — MCP-Konfiguration</summary>
 
 ```json
 {
   "mcpServers": {
     "search-rotation": {
-      "url": "http://dein-host:6277/mcp",
-      "headers": { "Authorization": "Bearer <geheim>" }
+      "command": "npx",
+      "args": ["-y", "--allow-git=all", "github:RobinBially/search-rotation#v0.3.0"]
     }
   }
 }
 ```
 
-Der Token schützt `/mcp`, das Dashboard und die API. **Wichtig:** Ohne Keys nutzen Firecrawl/Exa die Server-Egress-IP — auf VPS okay, hinter Cloudflare/Lambda unbrauchbar (geteilte IPs).
+</details>
 
-## MCP-Tools
+<details>
+<summary><strong>Cursor</strong> — <code>.cursor/mcp.json</code></summary>
 
-| Tool | Zweck |
-|---|---|
-| `web_search` | Normalisierte Suche ({title, url, snippet}), optional `numResults`/`engine` |
-| `fetch_url` | Seite als Markdown, eigene Fetch-Rotation |
-| `engine_status` | Engines, Position, Restkontingente, Keys, letzte Fehler |
-| `open_dashboard` | Öffnet das Dashboard im Browser |
-
-## Konfiguration
-
-Datei: `~/.config/search-rotation/config.json` (0600, wird vom Dashboard gepflegt). Override: `SEARCH_ROTATION_HOME`. Reihenfolge = Array-Reihenfolge (`engines` = Suche, `fetchOrder` = Fetch). Token zusätzlich via `--token` oder `SEARCH_ROTATION_TOKEN`.
-
-## Entwicklung
-
-```bash
-npm install
-npm run build        # tsc → dist/
-npm test             # Router- und Parser-Tests (node:test)
-npm run dev          # HTTP-Modus mit tsx
+```json
+{
+  "mcpServers": {
+    "search-rotation": {
+      "command": "npx",
+      "args": ["-y", "--allow-git=all", "github:RobinBially/search-rotation#v0.3.0"]
+    }
+  }
+}
 ```
 
-Projektstruktur: `src/engines/*` (Adapter mit `search`/`fetchUrl`/`remoteQuota`), `src/router.ts` (Round Robin, Failover, Quota-Ranking), `src/mcp/*` (Tools + Streamable-HTTP-Transport), `src/web/*` + `static/` (Dashboard), `src/index.ts` (CLI, stdio/HTTP-Modus).
+</details>
 
-## LICENSE
+<details>
+<summary><strong>OpenCode V2</strong> — Eintrag unter <code>mcp.servers</code></summary>
 
-MIT
+```json
+"search-rotation": {
+  "type": "local",
+  "command": ["npx", "-y", "--allow-git=all", "github:RobinBially/search-rotation#v0.3.0"],
+  "codemode": true
+}
+```
+
+</details>
+
+Bereits lokal installiert? `command = "search-rotation"` bzw. `["search-rotation"]` funktioniert weiterhin. Für die aktuellste Entwicklungsversion kannst du den Tag weglassen; für reproduzierbare Installationen einen Release-Tag verwenden.
+
+## Was dein Agent damit kann
+
+| Tool | Aufgabe | Beispiel |
+|---|---|---|
+| `web_search` | Suchen, optional mit Ergebnisanzahl und bevorzugter Engine | „Finde die wichtigsten Neuerungen von TypeScript.“ |
+| `fetch_url` | Eine Webseite als Markdown abrufen | „Lies diese Dokumentation und fasse sie zusammen.“ |
+| `engine_status` | Engines, Kontingente und letzte Fehler anzeigen | „Wie viel Suchkontingent ist noch verfügbar?“ |
+| `open_dashboard` | Das lokale Dashboard öffnen | „Ich möchte einen API-Key hinterlegen.“ |
+
+**So wird ausgewählt:** Engines mit gesundem Kontingent kommen zuerst, solche mit höchstens 10 % Rest danach. Erschöpfte Engines bleiben die letzte Instanz oder werden im strikten Gratis-Modus vollständig übersprungen. HTTP 429 und wiederholte Fehler lösen eine Pause aus. Ein Gesamtzeitlimit begrenzt die gesamte Such-/Fetch-Kette.
+
+## Unterstützte Engines
+
+| Engine | Suche | Seitenabruf | Zugang | Kontingentanzeige |
+|---|:---:|:---:|---|---|
+| [Tavily](https://tavily.com) | ✓ | ✓ | API-Key | Remote-Credits |
+| [Firecrawl](https://firecrawl.dev) | ✓ | ✓ | API-Key oder kleines IP-Kontingent | Remote-Credits mit Key |
+| [Parallel](https://parallel.ai) | ✓ | ✓ | API-Key | Lokal gezählte Requests |
+| [Exa](https://exa.ai) | ✓ | ✓ | API-Key oder gehosteter Exa-MCP | Lokale Schätzung / IP-Limit unbekannt |
+| [Google PSE](https://programmablesearchengine.google.com) | ✓ | — | API-Key + Search Engine ID; standardmäßig aus | Tagesfenster in Pacific Time |
+| [Jina Reader](https://jina.ai/reader) | — | ✓ | Ohne Key möglich | IP-Limit unbekannt |
+| [DuckDuckGo HTML](https://duckduckgo.com) | ✓ | — | Ohne Key; inoffizieller HTML-Zugang | IP-Limit unbekannt |
+
+Tarife und Verfügbarkeit können sich ändern. Die Anzeige unterscheidet Anbieterwerte und lokale Schätzungen; unbekannte IP-Limits werden ausdrücklich als unbekannt angezeigt. Der **Gratis-Modus ist keine Abrechnungsgarantie**, insbesondere bei anderen Anwendungen mit demselben Konto. Verbindliche Ausgabenlimits setzt du beim Anbieter.
+
+## Remote nutzen und Einstellungen anpassen
+
+- **Lokal:** Ein Prozess stellt MCP und Dashboard bereit. Konfiguration und Daten liegen in `~/.config/search-rotation/`; API-Keys werden in `config.json` mit Dateirechten `0600` gespeichert.
+- **Remote:** Streamable HTTP unter `/mcp`, Bearer-Token, explizite Host-/Origin-Freigabe und Browser-Login über `/login`. Für einen Bind außerhalb von Loopback ist ein Token erforderlich.
+- **Im Dashboard:** Engines und Reihenfolge, strikter Gratis-Modus und Gesamtzeitlimit (Standard 60 Sekunden).
+- **Beim Update auf v0.3.0:** Alte Serverprozesse vorher beenden. Die Dateien bleiben kompatibel. Im Token-Betrieb ersetzt `/login` die frühere `?token=…`-Anmeldung.
+
+→ **[Betrieb, Remote-Setup und alle Konfigurationsfelder](docs/operations.md)**
+
+## Releases und Entwicklung
+
+Jeder `v*`-Tag durchläuft Tests und Build unter **Node 20, 22 und 24**. Der Release-Workflow erstellt anschließend einen GitHub-Release mit:
+
+- `search-rotation-VERSION.tgz` — fertig gebautes, installierbares Paket;
+- `SHA256SUMS` — SHA-256-Prüfsumme zum Prüfen des Downloads;
+- Release Notes und automatisch ergänzter GitHub-Änderungsliste.
+
+Alternativ zum Git-Install kannst du das [Release-Paket](https://github.com/RobinBially/search-rotation/releases/latest) herunterladen und lokal installieren:
+
+```sh
+npm install -g ./search-rotation-0.3.0.tgz
+search-rotation
+```
+
+Für die Entwicklung:
+
+```sh
+git clone https://github.com/RobinBially/search-rotation.git
+cd search-rotation
+npm ci
+npm test
+npm run dev
+```
+
+`npm run smoke:package` baut ein Paket, installiert es in einem temporären Verzeichnis und prüft den MCP-Handshake samt aller vier Tools. [CI](.github/workflows/ci.yml) läuft bei Push und Pull Request; [Release](.github/workflows/release.yml) bei Versionstags. Beide benötigen **keine npm-Zugangsdaten**.
+
+---
+
+[MIT-Lizenz](LICENSE) · [Fehler melden](https://github.com/RobinBially/search-rotation/issues) · [Release Notes](https://github.com/RobinBially/search-rotation/releases)

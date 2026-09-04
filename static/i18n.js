@@ -4,6 +4,22 @@
 
 window.I18N = {
   de: {
+    "settings.title": "Rotation einstellen",
+    "settings.strict": "Strikter Gratis-Modus",
+    "settings.strictHelp": "Engines mit erschöpftem bekanntem Kontingent werden übersprungen. Geschätzte oder unbekannte Limits garantieren keine Kostenfreiheit; Anbieter-Budgetlimits zusätzlich setzen.",
+    "settings.timeout": "Maximale Dauer pro Anfrage (Millisekunden)",
+    "test.fetchOk": "{chars} Zeichen · {ms}",
+    "quota.unknown": "IP-Limit unbekannt",
+    "quota.period.day": "heute (UTC)",
+    "quota.period.month": "diesen Monat (UTC)",
+    "quota.period.ip": "IP-basiert",
+    "quota.unit.requests": "Anfragen",
+    "quota.unit.credits": "Credits",
+    "quota.source.remote": "Anbieter",
+    "quota.source.local": "lokal gezählt",
+    "quota.source.unknown": "unbekannt",
+    "quota.estimated": "geschätzt",
+
     "nav.overview": "Übersicht",
     "nav.engines": "Engines",
     "nav.history": "Verlauf",
@@ -61,7 +77,7 @@ window.I18N = {
     "cap.search": "Suche",
     "cap.fetch": "Fetch",
     "test.running": "Teste …",
-    "test.ok": "{count} Treffer · {ms} ms",
+    "test.ok": "{count} Treffer · {ms}",
     "notice.nokeys": "Noch keine Keys hinterlegt — ohne Keys laufen nur die IP-basierten Engines (Firecrawl, Jina, DuckDuckGo) mit wenigen Requests. Empfehlung: Tavily, Parallel und Exa registrieren (gratis, Links auf den Karten).",
 
     "quota.remote": "{used} / {limit} · remote",
@@ -100,6 +116,22 @@ window.I18N = {
   },
 
   en: {
+    "settings.title": "Rotation settings",
+    "settings.strict": "Strict free mode",
+    "settings.strictHelp": "Skips engines whose known quota is exhausted. Estimated or unknown limits cannot guarantee zero cost; also set provider spending caps.",
+    "settings.timeout": "Maximum request duration (milliseconds)",
+    "test.fetchOk": "{chars} characters · {ms}",
+    "quota.unknown": "IP limit unknown",
+    "quota.period.day": "today (UTC)",
+    "quota.period.month": "this month (UTC)",
+    "quota.period.ip": "IP-based",
+    "quota.unit.requests": "requests",
+    "quota.unit.credits": "credits",
+    "quota.source.remote": "provider",
+    "quota.source.local": "counted locally",
+    "quota.source.unknown": "unknown",
+    "quota.estimated": "estimated",
+
     "nav.overview": "Overview",
     "nav.engines": "Engines",
     "nav.history": "History",
@@ -157,7 +189,7 @@ window.I18N = {
     "cap.search": "search",
     "cap.fetch": "fetch",
     "test.running": "Testing …",
-    "test.ok": "{count} results · {ms} ms",
+    "test.ok": "{count} results · {ms}",
     "notice.nokeys": "No API keys stored yet — without keys only the IP-based engines (Firecrawl, Jina, DuckDuckGo) work, with just a few requests. Recommended: register Tavily, Parallel and Exa (free, links on the cards).",
 
     "quota.remote": "{used} / {limit} · remote",

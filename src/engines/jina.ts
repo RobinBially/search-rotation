@@ -21,6 +21,7 @@ export const JINA: EngineAdapter = {
     keyless: "ip",
     capabilities: ["fetch"],
     monthlyFree: 0,
+    quota: { period: "ip", unit: "requests", estimated: true },
     quotaEndpoint: false,
     notes: "Ohne Key IP-basiert (~20 Requests/Minute), mit Key höhere Limits. Nur fürs Abrufen von Seiten.",
   },

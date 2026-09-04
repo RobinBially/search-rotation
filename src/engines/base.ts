@@ -14,6 +14,7 @@ export class HttpError extends Error {
     public readonly status: number,
     public readonly body: string,
     public readonly url: string,
+    public readonly retryAfter?: string | null,
   ) {
     let host = url;
     try {
@@ -42,14 +43,14 @@ export async function httpText(url: string, init: RequestInit = {}, opts: HttpOp
   };
   const res = await fetch(url, { ...init, signal, headers });
   const body = await res.text();
-  if (!res.ok) throw new HttpError(res.status, body, url);
+  if (!res.ok) throw new HttpError(res.status, body, url, res.headers.get("retry-after"));
   return body;
 }
 
 export async function httpJson<T = unknown>(url: string, init: RequestInit = {}, opts: HttpOptions = {}): Promise<T> {
   const text = await httpText(
     url,
-    { ...init, headers: { accept: "application/json", ...(init.headers ?? {}) } },
+    { ...init, headers: { accept: "application/json", ...Object.fromEntries(new Headers(init.headers ?? undefined)) } },
     opts,
   );
   try {

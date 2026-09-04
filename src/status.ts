@@ -1,7 +1,9 @@
 import type { EngineAdapter, EngineContext, RemoteQuota } from "./types.js";
 import type { PolyConfig } from "./config.js";
 import type { EngineUsage, UsageStore } from "./usage.js";
-import { computeRemainingPct } from "./quota.js";
+import { quotaStatus, remainingPct, type QuotaStatus } from "./quota.js";
+import { createHash } from "node:crypto";
+import { abortable } from "./abort.js";
 
 export interface StatusRow {
   id: string;
@@ -24,6 +26,7 @@ export interface StatusRow {
   remoteError?: string;
   remainingPct: number | null;
   lastError?: string;
+  quota: QuotaStatus;
 }
 
 interface CacheEntry {
@@ -34,6 +37,16 @@ interface CacheEntry {
 
 const remoteCache = new Map<string, CacheEntry>();
 const REMOTE_TTL_MS = 5 * 60 * 1000;
+type QuotaResult = { quota: RemoteQuota | null; error?: string };
+interface PendingQuota {
+  controller: AbortController;
+  waiters: number;
+  consumed: number;
+  settled: boolean;
+  promise: Promise<QuotaResult>;
+}
+const pendingQuotas = new Map<string, PendingQuota>();
+let cacheGeneration = 0;
 
 export function maskKey(key?: string): string {
   if (!key) return "";
@@ -44,6 +57,9 @@ export function maskKey(key?: string): string {
 /** Remote-Quota-Cache leeren (z. B. nach dem Hinterlegen eines neuen Keys). */
 export function clearRemoteQuotaCache(): void {
   remoteCache.clear();
+  // Old callers may finish, but their snapshots must not refill this generation.
+  cacheGeneration++;
+  pendingQuotas.clear();
 }
 
 /** Remote-Quota vom Anbieter abrufen, 5 Minuten gecacht. */
@@ -52,18 +68,51 @@ export async function fetchRemoteQuotaCached(
   ctx: EngineContext,
 ): Promise<{ quota: RemoteQuota | null; error?: string }> {
   if (!adapter.remoteQuota || !ctx.apiKey) return { quota: null };
-  const cached = remoteCache.get(adapter.meta.id);
+  ctx.signal?.throwIfAborted();
+  const key = cacheKey(adapter, ctx);
+  const cached = remoteCache.get(key);
   if (cached && Date.now() - cached.at < REMOTE_TTL_MS) {
     return { quota: cached.quota, error: cached.error };
   }
+  let pending = pendingQuotas.get(key);
+  if (!pending) {
+    const generation = cacheGeneration;
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]);
+    const entry: PendingQuota = { controller, waiters: 0, consumed: 0, settled: false, promise: Promise.resolve({ quota: null }) };
+    pendingQuotas.set(key, entry);
+    entry.promise = (async (): Promise<QuotaResult> => {
+      try {
+        const snapshot = await abortable(Promise.resolve().then(() => {
+          signal.throwIfAborted();
+          return adapter.remoteQuota!({ ...ctx, signal });
+        }), signal);
+        // Provider snapshots may predate requests completed while fetching.
+        // Conservatively add that consumption instead of restoring spent quota.
+        const quota = addConsumption(snapshot, entry.consumed);
+        if (cacheGeneration === generation && pendingQuotas.get(key) === entry) remoteCache.set(key, { at: Date.now(), quota });
+        return { quota };
+      } catch (err) {
+        if (controller.signal.aborted) throw controller.signal.reason;
+        const error = err instanceof Error ? err.message : String(err);
+        if (cacheGeneration === generation && pendingQuotas.get(key) === entry) remoteCache.set(key, { at: Date.now(), quota: null, error });
+        return { quota: null, error };
+      } finally {
+        entry.settled = true;
+        if (pendingQuotas.get(key) === entry) pendingQuotas.delete(key);
+      }
+    })();
+    pending = entry;
+  }
+  pending.waiters++;
   try {
-    const quota = await adapter.remoteQuota(ctx);
-    remoteCache.set(adapter.meta.id, { at: Date.now(), quota });
-    return { quota };
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    remoteCache.set(adapter.meta.id, { at: Date.now(), quota: null, error });
-    return { quota: null, error };
+    return await abortable(pending.promise, ctx.signal);
+  } finally {
+    pending.waiters--;
+    if (pending.waiters === 0 && !pending.settled) {
+      if (pendingQuotas.get(key) === pending) pendingQuotas.delete(key);
+      pending.controller.abort(new Error("Keine wartenden Quota-Aufrufe mehr"));
+    }
   }
 }
 
@@ -107,10 +156,31 @@ export async function buildStatus(
       used,
       remote: quota,
       remoteError: error,
-      remainingPct: computeRemainingPct(used, monthlyLimit, quota),
+      remainingPct: remainingPct(quotaStatus(adapter, { apiKey: e?.apiKey }, cfg, usage, quota)),
+      quota: quotaStatus(adapter, { apiKey: e?.apiKey }, cfg, usage, quota),
       lastError: used.lastError,
     };
   });
 
   return Promise.all(rows);
+}
+
+function cacheKey(adapter: EngineAdapter, ctx: EngineContext): string {
+  return adapter.meta.id + ':' + createHash('sha256').update(JSON.stringify([ctx.apiKey, ctx.extra])).digest('hex');
+}
+
+/** Account for requests made since the last provider snapshot. */
+export function recordRemoteConsumption(adapter: EngineAdapter, ctx: EngineContext, units: number): void {
+  if (!Number.isFinite(units) || units <= 0) return;
+  const key = cacheKey(adapter, ctx);
+  const pending = pendingQuotas.get(key);
+  if (pending) pending.consumed += units;
+  const entry = remoteCache.get(key);
+  if (entry?.quota) entry.quota = addConsumption(entry.quota, units);
+}
+
+function addConsumption(q: RemoteQuota, units: number): RemoteQuota {
+  if (!units || !q.limit || (q.used === undefined && q.remaining === undefined)) return q;
+  const used = (q.used ?? q.limit - q.remaining!) + units;
+  return { ...q, used, remaining: Math.max(0, q.limit - used), estimated: true };
 }
