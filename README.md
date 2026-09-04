@@ -26,10 +26,11 @@ Eine Engine = ~1.000 Gratis-Anfragen/Monat. Sieben Engines rotiert = **~10.000+/
 
 ## Schnellstart (Codex / Claude / Cursor)
 
-Installiert direkt aus GitHub — kein npm-Publish nötig, `prepare` baut `dist` beim Installieren:
+Installiert direkt aus GitHub — kein npm-Publish nötig, `prepare` baut `dist` beim Installieren.
+npm 12 blockiert Git-Abhängigkeiten standardmäßig (`EALLOWGIT`) — daher `--allow-git=all` (oder einmalig `npm config set allow-git all`):
 
 ```bash
-npx -y github:RobinBially/search-rotation
+npx -y --allow-git=all github:RobinBially/search-rotation
 ```
 
 **Codex** — `~/.codex/config.toml`:
@@ -37,7 +38,7 @@ npx -y github:RobinBially/search-rotation
 ```toml
 [mcp_servers.search-rotation]
 command = "npx"
-args = ["-y", "github:RobinBially/search-rotation"]
+args = ["-y", "--allow-git=all", "github:RobinBially/search-rotation"]
 ```
 
 **Claude Desktop / Claude Code** — `claude_desktop_config.json`:
@@ -45,7 +46,7 @@ args = ["-y", "github:RobinBially/search-rotation"]
 ```json
 {
   "mcpServers": {
-    "search-rotation": { "command": "npx", "args": ["-y", "github:RobinBially/search-rotation"] }
+    "search-rotation": { "command": "npx", "args": ["-y", "--allow-git=all", "github:RobinBially/search-rotation"] }
   }
 }
 ```
@@ -63,7 +64,7 @@ Der stdio-Server startet **im selben Prozess** ein lokales Dashboard (`http://12
 ## Remote-Betrieb (Streamable HTTP)
 
 ```bash
-npx -y github:RobinBially/search-rotation --http --port 6277 --token <geheim>
+npx -y --allow-git=all github:RobinBially/search-rotation --http --port 6277 --token <geheim>
 ```
 
 Client-Config (Claude):

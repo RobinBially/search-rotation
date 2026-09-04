@@ -471,9 +471,9 @@ function renderSnippets() {
   const remoteUrl = location.origin + "/mcp";
   const codex = $("#snip-codex");
   if (!codex) return;
-  codex.textContent = '[mcp_servers.search-rotation]\ncommand = "npx"\nargs = ["-y", "github:RobinBially/search-rotation"]';
+  codex.textContent = '[mcp_servers.search-rotation]\ncommand = "npx"\nargs = ["-y", "--allow-git=all", "github:RobinBially/search-rotation"]';
   $("#snip-claude").textContent = JSON.stringify(
-    { mcpServers: { "search-rotation": { command: "npx", args: ["-y", "github:RobinBially/search-rotation"] } } },
+    { mcpServers: { "search-rotation": { command: "npx", args: ["-y", "--allow-git=all", "github:RobinBially/search-rotation"] } } },
     null,
     2,
   );
