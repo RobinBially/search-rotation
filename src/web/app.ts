@@ -50,10 +50,16 @@ export function buildWebApp(deps: WebDeps) {
   const serve =
     (file: string, type: string) =>
     (c: any) =>
-      c.body(readFileSync(path.join(staticDir, file), "utf8"), 200, { "content-type": type });
+      c.body(readFileSync(path.join(staticDir, file), "utf8"), 200, {
+        "content-type": type,
+        // Lokales Dashboard: Statics immer frisch validieren — sonst sieht
+        // man nach Updates hartnäckig die alte Version aus dem Browser-Cache.
+        "cache-control": "no-cache",
+      });
 
   app.get("/", serve("index.html", "text/html; charset=utf-8"));
   app.get("/app.js", serve("app.js", "text/javascript; charset=utf-8"));
+  app.get("/i18n.js", serve("i18n.js", "text/javascript; charset=utf-8"));
   app.get("/style.css", serve("style.css", "text/css; charset=utf-8"));
 
   app.get("/api/meta", (c) =>

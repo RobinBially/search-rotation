@@ -1,73 +1,94 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>search-rotation — Dashboard</title>
-<link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>search-rotation — Konsole</title>
+  <meta name="theme-color" content="#0a0c12">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238b7cf7'/%3E%3Cstop offset='1' stop-color='%234dd8e6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='url(%23g)' stroke-width='3.5' stroke-dasharray='66 22' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='url(%23g)'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header>
-  <div class="headrow">
-    <div>
-      <h1>search&#8209;rotation</h1>
-      <div class="sub"><span data-i18n="sub.text"></span> · <span id="version"></span> · <code id="configpath"></code></div>
+
+  <!-- SVG-Icon-Sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/>
+      </linearGradient>
+    </defs>
+    <symbol id="i-logo" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="12.5" fill="none" stroke="url(#logo-grad)" stroke-width="3.2" stroke-dasharray="58 21" stroke-linecap="round"/>
+      <circle cx="16" cy="16" r="4" fill="url(#logo-grad)"/>
+    </symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 4a9 9 0 0 1 9 9c0 1.8-.5 3.4-1.4 4.8H4.4A8.9 8.9 0 0 1 3 13a9 9 0 0 1 9-9Zm0 4.5v4l3 2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-stack" viewBox="0 0 24 24"><path d="M4 6.5 12 3l8 3.5-8 3.5-8-3.5Zm0 5.5 8 3.5L20 12M4 17l8 3.5L20 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 12h17M12 3.5c2.6 2.3 3.9 5.1 3.9 8.5s-1.3 6.2-3.9 8.5c-2.6-2.3-3.9-5.1-3.9-8.5S9.4 5.8 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.6m0 13.8v2.6M2.5 12h2.6m13.8 0h2.6M5 5l1.8 1.8M17.2 17.2 19 19M19 5l-1.8 1.8M6.8 17.2 5 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4.4l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5M14 10a4.5 4.5 0 0 0-6.4-.4l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6V4.5h5V6m-8.5.5.8 13h9.4l.8-13M10 10v6m4-6v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M13.5 5H19v5.5M19 5l-8 8M10 5H6.8C5.8 5 5 5.8 5 6.8v10.4c0 1 .8 1.8 1.8 1.8h10.4c1 0 1.8-.8 1.8-1.8V14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12l1-8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2.5-7 5 14 2.5-7H21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="14" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m11.5 10.5 8-8m-3 3 2.5 2.5m-5.5-.5 2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19L12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" /></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-5.5-5.5L19 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/" aria-label="search-rotation">
+        <svg class="brand-mark" width="30" height="30"><use href="#i-logo"/></svg>
+        <span class="brand-name">search<span class="brand-accent">-</span>rotation</span>
+        <span class="brand-ver" id="version"></span>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Hauptnavigation">
+        <span class="nav-ind" id="nav-ind"></span>
+        <a class="nav-tab" href="#/" data-route="/" data-i18n="nav.overview"><svg width="16" height="16"><use href="#i-gauge"/></svg><span data-i18n="nav.overview"></span></a>
+        <a class="nav-tab" href="#/engines" data-route="/engines"><svg width="16" height="16"><use href="#i-stack"/></svg><span data-i18n="nav.engines"></span></a>
+        <a class="nav-tab" href="#/history" data-route="/history"><svg width="16" height="16"><use href="#i-clock"/></svg><span data-i18n="nav.history"></span></a>
+      </nav>
+
+      <div class="topbar-actions">
+        <div class="dropdown" id="lang">
+          <button class="icon-btn" id="lang-btn" aria-haspopup="menu" aria-expanded="false" data-i18n-title="lang.menu">
+            <svg width="18" height="18"><use href="#i-globe"/></svg>
+            <span class="lang-code" id="lang-code">DE</span>
+          </button>
+          <div class="menu" id="lang-menu" role="menu" hidden>
+            <button role="menuitem" data-lang="de">Deutsch</button>
+            <button role="menuitem" data-lang="en">English</button>
+            <button role="menuitem" data-lang="zh">中文</button>
+            <button role="menuitem" data-lang="hi">हिन्दी</button>
+            <button role="menuitem" data-lang="es">Español</button>
+            <button role="menuitem" data-lang="fr">Français</button>
+          </div>
+        </div>
+        <button class="icon-btn" id="theme-btn" data-i18n-title="theme.toLight">
+          <svg width="18" height="18" id="theme-icon"><use href="#i-sun"/></svg>
+        </button>
+      </div>
     </div>
-    <select id="lang" aria-label="Sprache / Language">
-      <option value="de">Deutsch</option>
-      <option value="en">English</option>
-      <option value="zh">中文</option>
-      <option value="hi">हिन्दी</option>
-      <option value="es">Español</option>
-      <option value="fr">Français</option>
-    </select>
-  </div>
-</header>
-<main>
-  <div id="notice" class="notice hidden"></div>
+  </header>
 
-  <section>
-    <h2><span data-i18n="search.title"></span> <small data-i18n="search.subtitle"></small></h2>
-    <div id="search-engines" class="cards"></div>
-  </section>
+  <main class="view" id="view" aria-live="polite"></main>
 
-  <section>
-    <h2><span data-i18n="fetch.title"></span> <small data-i18n="fetch.subtitle"></small></h2>
-    <div id="fetch-engines" class="rows"></div>
-  </section>
+  <footer class="footer">
+    <span data-i18n="footer.text"></span>
+    <span class="footer-meta"><code id="configpath"></code></span>
+  </footer>
 
-  <section id="history-section">
-    <h2><span data-i18n="history.title"></span> <small data-i18n="history.subtitle"></small></h2>
-    <div class="histbar"><button id="history-clear" data-i18n="history.clear"></button></div>
-    <div id="history-list" class="histlist"><span class="muted" data-i18n="history.empty"></span></div>
-  </section>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 
-  <section>
-    <h2 data-i18n="setup.title"></h2>
-    <div class="snippets">
-      <div class="snippet">
-        <h3>Codex — <code>~/.codex/config.toml</code></h3>
-        <pre id="snip-codex"></pre>
-        <button data-copy="snip-codex" data-i18n="btn.copy"></button>
-      </div>
-      <div class="snippet">
-        <h3>Claude Desktop / Claude Code</h3>
-        <pre id="snip-claude"></pre>
-        <button data-copy="snip-claude" data-i18n="btn.copy"></button>
-      </div>
-      <div class="snippet">
-        <h3 data-i18n="snippet.remote"></h3>
-        <pre id="snip-remote"></pre>
-        <button data-copy="snip-remote" data-i18n="btn.copy"></button>
-      </div>
-    </div>
-  </section>
-</main>
-<footer>
-  <span data-i18n="footer.quota"></span> ·
-  <button id="refresh" data-i18n="btn.refresh"></button> ·
-  <span data-i18n="footer.auto"></span>
-</footer>
-<script src="/app.js"></script>
+  <script src="/i18n.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>

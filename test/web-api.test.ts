@@ -488,13 +488,19 @@ test("GET / liefert Dashboard-HTML mit id=\"lang\" und text/html", async () => {
   assert.match(html, /<script src="\/app\.js"><\/script>/);
 });
 
-test("GET /app.js und /style.css mit korrektem Content-Type", async () => {
+test("GET /app.js, /i18n.js und /style.css mit korrektem Content-Type", async () => {
   const { app } = makeApp();
 
   const js = await app.request("/app.js");
   assert.equal(js.status, 200);
   assert.equal(js.headers.get("content-type"), "text/javascript; charset=utf-8");
-  assert.match(await js.text(), /const I18N = \{/);
+  // Übersetzungen leben seit dem SPA-Redesign in i18n.js; app.js konsumiert window.I18N
+  assert.match(await js.text(), /window\.I18N/);
+
+  const i18n = await app.request("/i18n.js");
+  assert.equal(i18n.status, 200);
+  assert.equal(i18n.headers.get("content-type"), "text/javascript; charset=utf-8");
+  assert.match(await i18n.text(), /window\.I18N = \{/);
 
   const css = await app.request("/style.css");
   assert.equal(css.status, 200);

@@ -1,328 +1,144 @@
 "use strict";
 
+/* search-rotation Konsole — SPA mit Hash-Routing.
+   Views: Übersicht (#/), Engines (#/engines), Verlauf (#/history) */
+
 const $ = (s) => document.querySelector(s);
 
-const state = { meta: null, config: null, status: [], dragFrom: null, historyOpen: new Set() };
+const state = {
+  meta: null,
+  config: null,
+  status: [],
+  history: [],
+  route: "/",
+  openEngines: new Set(), // aufgeklappte Engine-Drawer
+  historyOpen: new Set(), // aufgeklappte Verlaufseinträge
+  filters: { kind: "all", engine: "", q: "" },
+  livePaused: false,
+  dragFrom: null,
+  unauthorized: false,
+};
 
 /* ---------- i18n ---------- */
 
-const I18N = {
-  de: {
-    "sub.text": "Round-Robin-Websuche über Gratis-Kontingente",
-    "search.title": "Such-Rotation",
-    "search.subtitle": "Reihenfolge per Drag & Drop — Round Robin startet oben",
-    "fetch.title": "Fetch-Rotation",
-    "fetch.subtitle": "Seiten abrufen / als Markdown extracten",
-    "setup.title": "MCP-Setup",
-    "snippet.remote": "Remote (Streamable HTTP)",
-    "btn.copy": "Kopieren",
-    "btn.copied": "Kopiert ✓",
-    "btn.save": "Speichern",
-    "btn.refresh": "Jetzt aktualisieren",
-    "btn.testSearch": "Suche testen",
-    "btn.testFetch": "Fetch testen",
-    "key.clear": "Key löschen",
-    "key.replace": "Key ersetzen (leer = unverändert) · aktuell: {masked}",
-    "key.set": "API-Key hinterlegen",
-    "extra.set": "(gesetzt)",
-    "signup": "Gratis-Key ↗",
-    "test.running": "… teste …",
-    "test.okSearch": "{count} Ergebnisse · {ms} ms",
-    "test.okFetch": "{chars} Zeichen · {ms} ms",
-    "badge.keyless": "ohne Key nutzbar",
-    "badge.quota": "Quota-API",
-    "cap.search": "Suche",
-    "cap.fetch": "Fetch",
-    "quota.local": "{used} / {limit} (lokal gezählt)",
-    "quota.remote": "{used} / {limit} (remote)",
-    "quota.none": "kein festes Kontingent",
-    "quota.error": "Remote-Quota: {error}",
-    "notice.nokeys": "Hinweis: Noch kein API-Key hinterlegt. Ohne Keys laufen nur die IP-basierten Engines (Firecrawl, Jina, DuckDuckGo) — und meist nur wenige Requests. Empfehlung: Tavily, Parallel und Exa registrieren (kostenlos, Links auf den Karten).",
-    "history.title": "Verlauf",
-    "history.subtitle": "Suchanfragen & Fetches · aktualisiert alle 5 s",
-    "history.clear": "Verlauf leeren",
-    "history.confirm": "Verlauf wirklich leeren?",
-    "history.empty": "Noch keine Einträge.",
-    "hist.search": "Suche",
-    "hist.fetch": "Fetch",
-    "hist.failed": "fehlgeschlagen",
-    "hist.results": "{n} Treffer",
-    "hist.chars": "{n} Zeichen",
-    "hist.attempts": "Versuchs-Kette",
-    "active": "aktiv",
-    "fetch.inactive": "inaktiv (Schalter in der Such-Sektion)",
-    "footer.quota": "Quota-Zähler: lokal pro Kalendermonat · Remote-Quota wo verfügbar (5 Min Cache)",
-    "footer.auto": "Verlauf: Poll alle 5 s · Quotas: alle 30 s",
-    "api.unauthorized": "401 — diese Dashboard-URL mit <code>?token=…</code> öffnen (steht im Server-Log).",
-  },
-  en: {
-    "sub.text": "Round-robin web search across free-tier quotas",
-    "search.title": "Search rotation",
-    "search.subtitle": "Drag & drop to reorder — round robin starts at the top",
-    "fetch.title": "Fetch rotation",
-    "fetch.subtitle": "Fetch pages / extract as markdown",
-    "setup.title": "MCP setup",
-    "snippet.remote": "Remote (Streamable HTTP)",
-    "btn.copy": "Copy",
-    "btn.copied": "Copied ✓",
-    "btn.save": "Save",
-    "btn.refresh": "Refresh now",
-    "btn.testSearch": "Test search",
-    "btn.testFetch": "Test fetch",
-    "key.clear": "Delete key",
-    "key.replace": "Replace key (empty = keep current) · current: {masked}",
-    "key.set": "Enter API key",
-    "extra.set": "(set)",
-    "signup": "Free key ↗",
-    "test.running": "… testing …",
-    "test.okSearch": "{count} results · {ms} ms",
-    "test.okFetch": "{chars} chars · {ms} ms",
-    "badge.keyless": "works without key",
-    "badge.quota": "Quota API",
-    "cap.search": "search",
-    "cap.fetch": "fetch",
-    "quota.local": "{used} / {limit} (counted locally)",
-    "quota.remote": "{used} / {limit} (remote)",
-    "quota.none": "no fixed quota",
-    "quota.error": "Remote quota: {error}",
-    "notice.nokeys": "Note: No API key stored yet. Without keys only the IP-based engines (Firecrawl, Jina, DuckDuckGo) work — usually just a few requests. Recommended: register Tavily, Parallel and Exa (free, links on the cards).",
-    "history.title": "History",
-    "history.subtitle": "Searches & fetches · refreshed every 5 s",
-    "history.clear": "Clear history",
-    "history.confirm": "Really clear the history?",
-    "history.empty": "No entries yet.",
-    "hist.search": "Search",
-    "hist.fetch": "Fetch",
-    "hist.failed": "failed",
-    "hist.results": "{n} results",
-    "hist.chars": "{n} chars",
-    "hist.attempts": "Attempt chain",
-    "active": "active",
-    "fetch.inactive": "inactive (toggle in the search section)",
-    "footer.quota": "Quota counters: local per calendar month · remote quota where available (5 min cache)",
-    "footer.auto": "History: 5 s polling · quotas: every 30 s",
-    "api.unauthorized": "401 — open this dashboard URL with <code>?token=…</code> (see server log).",
-  },
-  zh: {
-    "sub.text": "在多个免费配额之间轮询搜索",
-    "search.title": "搜索轮换",
-    "search.subtitle": "拖拽排序 — 轮询从最上方开始",
-    "fetch.title": "抓取轮换",
-    "fetch.subtitle": "抓取网页 / 提取为 Markdown",
-    "setup.title": "MCP 配置",
-    "snippet.remote": "远程（Streamable HTTP）",
-    "btn.copy": "复制",
-    "btn.copied": "已复制 ✓",
-    "btn.save": "保存",
-    "btn.refresh": "立即刷新",
-    "btn.testSearch": "测试搜索",
-    "btn.testFetch": "测试抓取",
-    "key.clear": "删除密钥",
-    "key.replace": "替换密钥（留空 = 保持不变）· 当前：{masked}",
-    "key.set": "输入 API 密钥",
-    "extra.set": "（已设置）",
-    "signup": "免费密钥 ↗",
-    "test.running": "… 测试中 …",
-    "test.okSearch": "{count} 条结果 · {ms} 毫秒",
-    "test.okFetch": "{chars} 字符 · {ms} 毫秒",
-    "badge.keyless": "无需密钥",
-    "badge.quota": "配额 API",
-    "cap.search": "搜索",
-    "cap.fetch": "抓取",
-    "quota.local": "{used} / {limit}（本地计数）",
-    "quota.remote": "{used} / {limit}（远程）",
-    "quota.none": "无固定配额",
-    "quota.error": "远程配额：{error}",
-    "notice.nokeys": "提示：尚未保存任何 API 密钥。没有密钥时只有基于 IP 的引擎（Firecrawl、Jina、DuckDuckGo）可用——通常次数很少。建议注册 Tavily、Parallel 和 Exa（免费，见各卡片链接）。",
-    "history.title": "历史记录",
-    "history.subtitle": "搜索与抓取 · 每 5 秒刷新",
-    "history.clear": "清空历史",
-    "history.confirm": "确定要清空历史吗？",
-    "history.empty": "暂无记录。",
-    "hist.search": "搜索",
-    "hist.fetch": "抓取",
-    "hist.failed": "失败",
-    "hist.results": "{n} 条结果",
-    "hist.chars": "{n} 字符",
-    "hist.attempts": "尝试链",
-    "active": "启用",
-    "fetch.inactive": "停用（在搜索区切换）",
-    "footer.quota": "配额计数：按自然月本地统计 · 可用时会拉取远程配额（5 分钟缓存）",
-    "footer.auto": "历史：每 5 秒轮询 · 配额：每 30 秒",
-    "api.unauthorized": "401 — 请使用带 <code>?token=…</code> 的地址打开此面板（见服务器日志）。",
-  },
-  hi: {
-    "sub.text": "निःशुल्क कोटा में राउंड-रॉबिन वेब खोज",
-    "search.title": "खोज रोटेशन",
-    "search.subtitle": "क्रम बदलने के लिए ड्रैग करें — राउंड रॉबिन ऊपर से शुरू",
-    "fetch.title": "फ़ेच रोटेशन",
-    "fetch.subtitle": "पेज प्राप्त करें / Markdown में निकालें",
-    "setup.title": "MCP सेटअप",
-    "snippet.remote": "रिमोट (Streamable HTTP)",
-    "btn.copy": "कॉपी",
-    "btn.copied": "कॉपी हो गया ✓",
-    "btn.save": "सहेजें",
-    "btn.refresh": "अभी रीफ़्रेश करें",
-    "btn.testSearch": "खोज परीक्षण",
-    "btn.testFetch": "फ़ेच परीक्षण",
-    "key.clear": "कुंजी हटाएँ",
-    "key.replace": "कुंजी बदलें (खाली = अपरिवर्तित) · वर्तमान: {masked}",
-    "key.set": "API कुंजी दर्ज करें",
-    "extra.set": "(सेट)",
-    "signup": "निःशुल्क कुंजी ↗",
-    "test.running": "… परीक्षण चल रहा है …",
-    "test.okSearch": "{count} परिणाम · {ms} ms",
-    "test.okFetch": "{chars} अक्षर · {ms} ms",
-    "badge.keyless": "कुंजी के बिना चलता है",
-    "badge.quota": "कोटा API",
-    "cap.search": "खोज",
-    "cap.fetch": "फ़ेच",
-    "quota.local": "{used} / {limit} (स्थानीय गणना)",
-    "quota.remote": "{used} / {limit} (रिमोट)",
-    "quota.none": "कोई निश्चित कोटा नहीं",
-    "quota.error": "रिमोट कोटा: {error}",
-    "notice.nokeys": "नोट: अभी कोई API कुंजी संग्रहीत नहीं है। कुंजी के बिना केवल IP-आधारित इंजन (Firecrawl, Jina, DuckDuckGo) चलते हैं — और आमतौर पर कुछ ही अनुरोध। अनुशंसा: Tavily, Parallel और Exa पंजीकृत करें (निःशुल्क, कार्ड पर लिंक)।",
-    "history.title": "इतिहास",
-    "history.subtitle": "खोजें और फ़ेच · हर 5 सेकंड में अपडेट",
-    "history.clear": "इतिहास साफ़ करें",
-    "history.confirm": "क्या वाकई इतिहास साफ़ करना है?",
-    "history.empty": "अभी कोई प्रविष्टि नहीं।",
-    "hist.search": "खोज",
-    "hist.fetch": "फ़ेच",
-    "hist.failed": "विफल",
-    "hist.results": "{n} परिणाम",
-    "hist.chars": "{n} अक्षर",
-    "hist.attempts": "प्रयास श्रृंखला",
-    "active": "सक्रिय",
-    "fetch.inactive": "निष्क्रिय (खोज अनुभाग में स्विच करें)",
-    "footer.quota": "कोटा गणना: स्थानीय कैलेंडर माह प्रति · रिमोट कोटा जहाँ उपलब्ध (5 मिनट कैश)",
-    "footer.auto": "इतिहास: हर 5 सेकंड पोल · कोटा: हर 30 सेकंड",
-    "api.unauthorized": "401 — इस डैशबोर्ड URL को <code>?token=…</code> के साथ खोलें (सर्वर लॉग में है)।",
-  },
-  es: {
-    "sub.text": "Búsqueda web round-robin entre cuotas gratuitas",
-    "search.title": "Rotación de búsqueda",
-    "search.subtitle": "Arrastra para ordenar — el round robin empieza arriba",
-    "fetch.title": "Rotación de fetch",
-    "fetch.subtitle": "Obtener páginas / extraer como markdown",
-    "setup.title": "Configuración MCP",
-    "snippet.remote": "Remoto (Streamable HTTP)",
-    "btn.copy": "Copiar",
-    "btn.copied": "Copiado ✓",
-    "btn.save": "Guardar",
-    "btn.refresh": "Actualizar ahora",
-    "btn.testSearch": "Probar búsqueda",
-    "btn.testFetch": "Probar fetch",
-    "key.clear": "Eliminar clave",
-    "key.replace": "Reemplazar clave (vacío = sin cambios) · actual: {masked}",
-    "key.set": "Introducir clave API",
-    "extra.set": "(configurado)",
-    "signup": "Clave gratis ↗",
-    "test.running": "… probando …",
-    "test.okSearch": "{count} resultados · {ms} ms",
-    "test.okFetch": "{chars} caracteres · {ms} ms",
-    "badge.keyless": "funciona sin clave",
-    "badge.quota": "API de cuota",
-    "cap.search": "búsqueda",
-    "cap.fetch": "fetch",
-    "quota.local": "{used} / {limit} (conteo local)",
-    "quota.remote": "{used} / {limit} (remoto)",
-    "quota.none": "sin cuota fija",
-    "quota.error": "Cuota remota: {error}",
-    "notice.nokeys": "Aviso: aún no hay claves API guardadas. Sin claves solo funcionan los motores basados en IP (Firecrawl, Jina, DuckDuckGo) y normalmente pocas peticiones. Recomendación: regístrate en Tavily, Parallel y Exa (gratis, enlaces en las tarjetas).",
-    "history.title": "Historial",
-    "history.subtitle": "Búsquedas y fetches · actualizado cada 5 s",
-    "history.clear": "Borrar historial",
-    "history.confirm": "¿Seguro que quieres borrar el historial?",
-    "history.empty": "Aún no hay entradas.",
-    "hist.search": "Búsqueda",
-    "hist.fetch": "Fetch",
-    "hist.failed": "fallido",
-    "hist.results": "{n} resultados",
-    "hist.chars": "{n} caracteres",
-    "hist.attempts": "Cadena de intentos",
-    "active": "activo",
-    "fetch.inactive": "inactivo (interruptor en la sección de búsqueda)",
-    "footer.quota": "Contadores de cuota: local por mes natural · cuota remota cuando está disponible (caché 5 min)",
-    "footer.auto": "Historial: cada 5 s · cuotas: cada 30 s",
-    "api.unauthorized": "401 — abre esta URL del panel con <code>?token=…</code> (está en el log del servidor).",
-  },
-  fr: {
-    "sub.text": "Recherche web round-robin sur les quotas gratuits",
-    "search.title": "Rotation de recherche",
-    "search.subtitle": "Glisser-déposer pour réordonner — le round robin commence en haut",
-    "fetch.title": "Rotation de récupération",
-    "fetch.subtitle": "Récupérer des pages / extraire en markdown",
-    "setup.title": "Configuration MCP",
-    "snippet.remote": "Distant (Streamable HTTP)",
-    "btn.copy": "Copier",
-    "btn.copied": "Copié ✓",
-    "btn.save": "Enregistrer",
-    "btn.refresh": "Actualiser maintenant",
-    "btn.testSearch": "Tester la recherche",
-    "btn.testFetch": "Tester le fetch",
-    "key.clear": "Supprimer la clé",
-    "key.replace": "Remplacer la clé (vide = inchangée) · actuelle : {masked}",
-    "key.set": "Saisir la clé API",
-    "extra.set": "(défini)",
-    "signup": "Clé gratuite ↗",
-    "test.running": "… test en cours …",
-    "test.okSearch": "{count} résultats · {ms} ms",
-    "test.okFetch": "{chars} caractères · {ms} ms",
-    "badge.keyless": "sans clé",
-    "badge.quota": "API de quota",
-    "cap.search": "recherche",
-    "cap.fetch": "fetch",
-    "quota.local": "{used} / {limit} (compté localement)",
-    "quota.remote": "{used} / {limit} (distant)",
-    "quota.none": "pas de quota fixe",
-    "quota.error": "Quota distant : {error}",
-    "notice.nokeys": "Remarque : aucune clé API enregistrée. Sans clés, seuls les moteurs basés sur IP fonctionnent (Firecrawl, Jina, DuckDuckGo) — et rarement plus de quelques requêtes. Recommandé : inscrivez-vous sur Tavily, Parallel et Exa (gratuit, liens sur les cartes).",
-    "history.title": "Historique",
-    "history.subtitle": "Recherches et fetchs · actualisé toutes les 5 s",
-    "history.clear": "Vider l'historique",
-    "history.confirm": "Vider vraiment l'historique ?",
-    "history.empty": "Aucune entrée pour le moment.",
-    "hist.search": "Recherche",
-    "hist.fetch": "Fetch",
-    "hist.failed": "échec",
-    "hist.results": "{n} résultats",
-    "hist.chars": "{n} caractères",
-    "hist.attempts": "Chaîne d'essais",
-    "active": "actif",
-    "fetch.inactive": "inactif (interrupteur dans la section recherche)",
-    "footer.quota": "Compteurs de quota : local par mois calendaire · quota distant si disponible (cache 5 min)",
-    "footer.auto": "Historique : toutes les 5 s · quotas : toutes les 30 s",
-    "api.unauthorized": "401 — ouvrez cette URL du tableau de bord avec <code>?token=…</code> (voir journal du serveur).",
-  },
-};
-
+const I18N = window.I18N;
 let lang = localStorage.getItem("sr_lang") || (navigator.language || "de").slice(0, 2).toLowerCase();
 if (!I18N[lang]) lang = "de";
 
 function t(key, vars) {
   let s = (I18N[lang] && I18N[lang][key]) || I18N.de[key] || key;
-  if (vars) {
-    for (const [k, v] of Object.entries(vars)) s = s.replaceAll("{" + k + "}", String(v));
-  }
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll("{" + k + "}", String(v));
   return s;
 }
 
 function applyI18n() {
   document.documentElement.lang = lang;
-  document.querySelectorAll("[data-i18n]").forEach((el) => {
-    el.textContent = t(el.dataset.i18n);
-  });
-  $("#lang").value = lang;
+  document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => (el.title = t(el.dataset.i18nTitle)));
+  $("#lang-code").textContent = lang.toUpperCase();
+  document.querySelectorAll("#lang-menu [data-lang]").forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
 }
 
-/* ---------- helpers ---------- */
+/* ---------- Theme ---------- */
+
+function initTheme() {
+  const saved = localStorage.getItem("sr_theme");
+  const theme = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  setTheme(theme, false);
+}
+
+function setTheme(theme, persist = true) {
+  document.documentElement.dataset.theme = theme;
+  $("#theme-icon").innerHTML = '<use href="#i-' + (theme === "dark" ? "sun" : "moon") + '"/>';
+  $("#theme-btn").title = t(theme === "dark" ? "theme.toLight" : "theme.toDark");
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#0a0c12" : "#f4f5fa");
+  if (persist) localStorage.setItem("sr_theme", theme);
+}
+
+/* ---------- Helfer ---------- */
 
 function esc(s) {
   const d = document.createElement("div");
   d.textContent = String(s ?? "");
   return d.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+
+const rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
+
+function relTime(ts) {
+  const s = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
+  if (s < 45) return rtf.format(-s, "second");
+  const m = Math.round(s / 60);
+  if (m < 45) return rtf.format(-m, "minute");
+  const h = Math.round(m / 60);
+  if (h < 22) return rtf.format(-h, "hour");
+  return rtf.format(-Math.round(h / 24), "day");
+}
+
+function fmtMs(ms) {
+  return ms >= 1000 ? (ms / 1000).toLocaleString(lang, { maximumFractionDigits: 1 }) + " s" : Math.round(ms) + " ms";
+}
+
+const ENGINE_HUES = { tavily: 174, exa: 262, firecrawl: 24, "google-cse": 217, jina: 199, parallel: 145, duckduckgo: 14 };
+
+function engineHue(id) {
+  if (ENGINE_HUES[id] !== undefined) return ENGINE_HUES[id];
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return h;
+}
+
+function avatarStyle(id) {
+  const h = engineHue(id);
+  return "background:linear-gradient(135deg,hsl(" + h + " 62% 52%),hsl(" + ((h + 28) % 360) + " 68% 40%))";
+}
+
+function pctClass(pct) {
+  return pct > 40 ? "ok" : pct > 10 ? "warn" : "crit";
+}
+
+function bar(pct, extraCls) {
+  const cls = pctClass(pct);
+  return '<div class="bar"><div class="fill ' + cls + (extraCls ? " " + extraCls : "") + '" style="width:' + Math.max(2, Math.min(100, pct)) + '%"></div></div>';
+}
+
+function quotaHtml(st) {
+  if (!st || !st.id) return "";
+  if (st.remoteError) return '<span class="quota-err">' + esc(t("quota.error", { error: st.remoteError })) + "</span>";
+  if (st.remote && st.remote.limit) {
+    const rem = st.remote.remaining !== undefined ? st.remote.remaining : st.remote.limit - (st.remote.used || 0);
+    const pct = Math.max(0, Math.round((100 * rem) / st.remote.limit));
+    return bar(pct) + '<span class="quota-label">' + esc(t("quota.remote", { used: st.remote.used ?? "?", limit: st.remote.limit })) + "</span>";
+  }
+  if (st.monthlyLimit > 0) {
+    const used = (st.used?.search || 0) + (st.used?.fetch || 0);
+    const pct = Math.max(0, Math.round((100 * (st.monthlyLimit - used)) / st.monthlyLimit));
+    return bar(pct) + '<span class="quota-label">' + esc(t("quota.local", { used, limit: st.monthlyLimit })) + "</span>";
+  }
+  return '<span class="quota-none">' + esc(t("quota.none")) + "</span>";
+}
+
+function ringGauge(pct) {
+  const r = 21, c = 2 * Math.PI * r;
+  if (pct === null || pct === undefined) {
+    // Kein festes Kontingent: neutraler Ring mit ∞
+    return (
+      '<div class="gauge"><svg width="52" height="52" viewBox="0 0 52 52">' +
+      '<circle class="track" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5"/></svg>' +
+      '<span class="gauge-val inf">∞</span></div>'
+    );
+  }
+  const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+  return (
+    '<div class="gauge"><svg width="52" height="52" viewBox="0 0 52 52">' +
+    '<circle class="track" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5"/>' +
+    '<circle class="val ' + pctClass(pct) + '" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5" stroke-linecap="round" ' +
+    'stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/></svg>' +
+    '<span class="gauge-val">' + pct + "</span></div>"
+  );
+}
+
+/* ---------- Token & API ---------- */
 
 const params = new URLSearchParams(location.search);
 if (params.get("token")) {
@@ -339,7 +155,8 @@ async function api(path, opts = {}) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   if (res.status === 401) {
-    document.body.innerHTML = '<main><p class="error">' + t("api.unauthorized") + "</p></main>";
+    state.unauthorized = true;
+    $("#view").innerHTML = '<div class="auth-error"><div><p style="font-size:34px;margin:0 0 10px">🔒</p>' + t("api.unauthorized") + "</div></div>";
     throw new Error("unauthorized");
   }
   const data = await res.json().catch(() => ({}));
@@ -349,98 +166,276 @@ async function api(path, opts = {}) {
 
 async function refreshStatus() {
   const s = await api("/api/status");
-  state.status = s.engines;
+  state.status = s.engines || [];
+}
+
+async function loadHistory() {
+  const data = await api("/api/history?limit=200");
+  state.history = data.entries || [];
 }
 
 async function load() {
   state.meta = await api("/api/meta");
   state.config = await api("/api/config");
   await refreshStatus();
+  document.body.dataset.booted = "1";
+  $("#version").textContent = "v" + state.meta.version;
+  $("#configpath").textContent = state.meta.configPath;
+  $("#configpath").title = state.meta.configPath;
   render();
-  loadHistory().catch(() => {});
+  loadHistory().then(renderIfDataView).catch(() => {});
 }
+
+function renderIfDataView() {
+  if (state.route === "/history" || state.route === "/") render();
+}
+
+/* ---------- Toasts ---------- */
+
+function toast(kind, msg) {
+  const wrap = $("#toasts");
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.innerHTML =
+    '<svg width="16" height="16"><use href="#i-' +
+    (kind === "ok" ? "check" : kind === "error" ? "x" : "zap") +
+    '"/></svg><span>' + esc(msg) + "</span>";
+  wrap.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("leaving");
+    setTimeout(() => el.remove(), 260);
+  }, 3200);
+}
+
+/* ---------- Status-Zugriff ---------- */
 
 function statusOf(id) {
   return state.status.find((e) => e.id === id) || {};
 }
-function metaOf(id) {
-  return (state.config.enginesMeta || []).find((m) => m.id === id) || {};
-}
-function cfgOf(id) {
-  return (state.config.engines || []).find((e) => e.id === id) || {};
+
+function sortedEngines() {
+  return [...state.status].sort((a, b) => a.searchPosition - b.searchPosition);
 }
 
-function bar(pct, label) {
-  const cls = pct > 40 ? "ok" : pct > 10 ? "warn" : "crit";
-  return (
-    '<div class="bar"><div class="fill ' + cls + '" style="width:' + pct + '%"></div></div>' +
-    '<span class="bar-label">' + esc(label) + " · " + pct + "%</span>"
-  );
+function anyKeySet() {
+  return state.status.some((e) => e.hasKey);
 }
 
-function quotaHtml(st) {
-  if (!st || !st.id) return "";
-  if (st.remoteError) return '<span class="quota-err">' + esc(t("quota.error", { error: st.remoteError })) + "</span>";
-  if (st.remote && st.remote.limit) {
-    const rem = st.remote.remaining !== undefined ? st.remote.remaining : st.remote.limit - (st.remote.used || 0);
-    return bar(
-      Math.max(0, Math.round((100 * rem) / st.remote.limit)),
-      t("quota.remote", { used: st.remote.used ?? "?", limit: st.remote.limit }),
-    );
-  }
-  if (st.monthlyLimit > 0) {
-    const used = (st.used?.search || 0) + (st.used?.fetch || 0);
-    return bar(
-      Math.max(0, Math.round((100 * (st.monthlyLimit - used)) / st.monthlyLimit)),
-      t("quota.local", { used, limit: st.monthlyLimit }),
-    );
-  }
-  return '<span class="quota-free">' + esc(t("quota.none")) + "</span>";
-}
+/* ---------- Konfig-PUTs (serialisiert) ---------- */
 
 let putChain = Promise.resolve();
-/**
- * PUTs serialisieren; der bodyBuilder läuft erst zur Ausführungszeit gegen
- * den dann aktuellen state.config — schnelle Klicks überschreiben sich so
- * nicht mehr gegenseitig mit Stale-Snapshots.
- */
+
 function queuePut(bodyBuilder) {
   putChain = putChain
     .then(() => api("/api/config", { method: "PUT", body: bodyBuilder(state.config) }))
-    .then((r) => {
+    .then(async (r) => {
       state.config = r.config;
+      try {
+        await refreshStatus();
+      } catch {}
       render();
+      toast("ok", t("toast.saved"));
     })
     .catch((err) => {
-      if (err.message !== "unauthorized") alert(err.message);
+      if (err.message !== "unauthorized") toast("error", t("toast.error", { msg: err.message }));
     });
   return putChain;
 }
 
-/* ---------- rendering ---------- */
+/* ---------- Router ---------- */
+
+function parseHash() {
+  const h = location.hash.replace(/^#/, "");
+  return ["/", "/engines", "/history"].includes(h) ? h : "/";
+}
+
+function setRoute(route) {
+  state.route = route;
+  document.querySelectorAll(".nav-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.route === route));
+  positionNavInd();
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+function positionNavInd() {
+  const active = $(".nav-tab.active");
+  const ind = $("#nav-ind");
+  if (!active || !ind) return;
+  ind.style.width = active.offsetWidth + "px";
+  ind.style.transform = "translateX(" + active.offsetLeft + "px)";
+}
 
 function render() {
+  if (state.unauthorized) return;
   applyI18n();
-  $("#version").textContent = "v" + state.meta.version;
-  $("#configpath").textContent = state.meta.configPath;
+  positionNavInd();
+  if (!state.config) return renderSkeleton();
+  if (state.route === "/engines") renderEngines();
+  else if (state.route === "/history") renderHistory();
+  else renderOverview();
+}
 
-  const anyKey = (state.config.engines || []).some((e) => e.hasKey);
-  const notice = $("#notice");
-  if (!anyKey) {
-    notice.textContent = t("notice.nokeys");
-    notice.classList.remove("hidden");
-  } else {
-    notice.classList.add("hidden");
-  }
+function renderSkeleton() {
+  $("#view").innerHTML =
+    '<div class="page">' +
+    '<div class="skeleton" style="height:52px;margin-bottom:16px"></div>' +
+    '<div class="overview-grid">' + '<div class="skeleton" style="height:110px"></div>'.repeat(4) + "</div>" +
+    '<div class="skeleton" style="height:180px"></div>' +
+    "</div>";
+}
 
-  renderSearch();
-  renderFetch();
+/* ---------- View: Übersicht ---------- */
+
+function renderOverview() {
+  const engines = sortedEngines();
+  const enabled = engines.filter((e) => e.enabled);
+  const searches = engines.reduce((n, e) => n + (e.used?.search || 0), 0);
+  const fetches = engines.reduce((n, e) => n + (e.used?.fetch || 0), 0);
+  const h = state.history;
+  const fails = h.filter((e) => !e.ok).length;
+  const errRate = h.length ? Math.round((100 * fails) / h.length) : 0;
+  const okDurs = h.filter((e) => e.ok).map((e) => e.ms);
+  const avg = okDurs.length ? okDurs.reduce((a, b) => a + b, 0) / okDurs.length : 0;
+
+  const rotation =
+    enabled.length
+      ? enabled
+          .map(
+            (e) =>
+              '<a class="rot-row" href="#/engines" data-focus-engine="' + esc(e.id) + '">' +
+              '<span class="rot-pos">' + (e.searchPosition + 1) + "</span>" +
+              '<span class="avatar" style="width:26px;height:26px;font-size:12px;border-radius:8px;' + avatarStyle(e.id) + '">' + esc((e.label || e.id)[0]) + "</span>" +
+              '<span class="rot-name">' + esc(e.label || e.id) + "</span>" +
+              bar(remainingPctOf(e) ?? 100, "accent") +
+              '<svg class="rot-arrow" width="15" height="15"><use href="#i-arrow"/></svg></a>',
+          )
+          .join("")
+      : '<div class="empty" style="padding:22px"><span class="empty-title">' + esc(t("rotation.empty")) + "</span></div>";
+
+  const health = engines
+    .map((e) => {
+      const pct = remainingPctOf(e);
+      const src = e.remote && e.remote.limit ? t("health.source.remote") : e.monthlyLimit > 0 ? t("health.source.local") : t("health.source.none");
+      return (
+        '<a class="health-card' + (e.enabled ? "" : " off") + '" href="#/engines" data-focus-engine="' + esc(e.id) + '">' +
+        ringGauge(pct) +
+        '<span class="health-meta"><span class="health-name">' + esc(e.label || e.id) + "</span>" +
+        '<span class="health-src">' + (e.enabled ? esc(src) : esc(t("health.off"))) + "</span></span></a>"
+      );
+    })
+    .join("");
+
+  const recent = h.length
+    ? h
+        .slice(0, 6)
+        .map(
+          (e) =>
+            '<a class="recent-row" href="#/history">' +
+            '<span class="hkind-icon ' + esc(e.kind) + '" style="width:24px;height:24px"><svg width="13" height="13"><use href="#i-' + (e.kind === "search" ? "search" : "link") + '"/></svg></span>' +
+            '<span class="ri">' + esc(e.input) + "</span>" +
+            (e.ok ? "" : '<svg width="13" height="13" style="color:var(--crit)"><use href="#i-x"/></svg>') +
+            '<span class="rt">' + relTime(e.ts) + "</span></a>",
+        )
+        .join("")
+    : '<div class="empty" style="padding:20px"><span class="muted">' + esc(t("recent.empty")) + "</span></div>";
+
+  $("#view").innerHTML =
+    '<div class="page">' +
+    pageHead(t("overview.title"), t("overview.sub"), state.meta.month) +
+    (anyKeySet() ? "" : '<div class="banner"><svg width="16" height="16"><use href="#i-alert"/></svg><span>' + esc(t("notice.nokeys")) + "</span></div>") +
+    '<div class="overview-grid">' +
+    statCard("search", t("stat.searches"), t("stat.searchesSub"), searches) +
+    statCard("link", t("stat.fetches"), t("stat.fetchesSub"), fetches) +
+    statCard("alert", t("stat.errors"), t("stat.errorsSub"), errRate + "%") +
+    statCard("zap", t("stat.duration"), t("stat.durationSub"), avg ? fmtMs(avg) : "–") +
+    "</div>" +
+    '<div class="two-col">' +
+    '<div class="panel"><div class="panel-head"><h2>' + esc(t("rotation.title")) + '</h2><span class="sub">' + esc(t("rotation.sub")) + '</span><span class="spacer"><a class="btn btn-ghost" href="#/engines">' + esc(t("rotation.manage")) + ' <svg width="13" height="13"><use href="#i-arrow"/></svg></a></span></div><div class="rot-list">' + rotation + "</div></div>" +
+    '<div class="panel"><div class="panel-head"><h2>' + esc(t("health.title")) + '</h2><span class="sub">' + esc(t("health.sub")) + "</span></div>" + '<div class="health-grid">' + health + "</div></div>" +
+    "</div>" +
+    '<div class="panel"><div class="panel-head"><h2>' + esc(t("recent.title")) + '</h2><span class="spacer"><a class="btn btn-ghost" href="#/history">' + esc(t("recent.all")) + ' <svg width="13" height="13"><use href="#i-arrow"/></svg></a></span></div>' +
+    '<div class="sparkline">' + sparkline(h) + "</div>" +
+    '<div class="recent-list">' + recent + "</div></div>" +
+    '<details class="panel setup-panel"><summary>' + esc(t("setup.summary")) + '<svg class="chev" width="16" height="16"><use href="#i-chevron"/></svg></summary>' +
+    '<div class="snippets">' +
+    '<div class="snippet"><h3>' + esc(t("snippet.codex")) + '</h3><pre id="snip-codex"></pre><button class="btn" data-copy="snip-codex">' + esc(t("btn.copy")) + "</button></div>" +
+    '<div class="snippet"><h3>' + esc(t("snippet.claude")) + '</h3><pre id="snip-claude"></pre><button class="btn" data-copy="snip-claude">' + esc(t("btn.copy")) + "</button></div>" +
+    '<div class="snippet"><h3>' + esc(t("snippet.remote")) + '</h3><pre id="snip-remote"></pre><button class="btn" data-copy="snip-remote">' + esc(t("btn.copy")) + "</button></div>" +
+    "</div></details>" +
+    "</div>";
+
   renderSnippets();
 }
 
-function renderSearch() {
-  const wrap = $("#search-engines");
-  // Ungespeicherte Eingaben über das Re-Render retten (render() läuft auch bei fremden PUT-Responses)
+function pageHead(title, sub, month) {
+  return (
+    '<div class="page-head"><h1>' + esc(title) + (month ? ' <span class="badge">' + esc(month) + "</span>" : "") + "</h1>" +
+    '<div class="sub">' + esc(sub) + "</div></div>"
+  );
+}
+
+function statCard(icon, label, sub, value) {
+  return (
+    '<div class="panel stat-card"><span class="stat-icon"><svg width="16" height="16"><use href="#i-' + icon + '"/></svg></span>' +
+    '<span class="stat-value">' + esc(value) + '</span><span class="stat-label">' + esc(label) + '</span><span class="stat-sub">' + esc(sub) + "</span></div>"
+  );
+}
+
+function remainingPctOf(st) {
+  if (st.remoteError) return 0;
+  if (st.remote && st.remote.limit) {
+    const rem = st.remote.remaining !== undefined ? st.remote.remaining : st.remote.limit - (st.remote.used || 0);
+    return Math.max(0, Math.round((100 * rem) / st.remote.limit));
+  }
+  if (st.monthlyLimit > 0) {
+    const used = (st.used?.search || 0) + (st.used?.fetch || 0);
+    return Math.max(0, Math.round((100 * (st.monthlyLimit - used)) / st.monthlyLimit));
+  }
+  return null; // kein festes Kontingent
+}
+
+/** 24 Zweistunden-Buckets aus dem Verlauf (48 h). */
+function sparkline(entries) {
+  const now = Date.now();
+  const bucketMs = 2 * 3600 * 1000;
+  const buckets = new Array(24).fill(0);
+  for (const e of entries) {
+    const age = now - new Date(e.ts).getTime();
+    if (age < 0 || age >= 48 * bucketMs) continue;
+    buckets[23 - Math.floor(age / bucketMs)]++;
+  }
+  const max = Math.max(...buckets, 1);
+  const w = 100 / 24;
+  const rects = buckets
+    .map((v, i) => {
+      const bh = v ? Math.max(3, (v / max) * 38) : 1.5;
+      const x = (i * w + w * 0.2).toFixed(2);
+      const y = (40 - bh).toFixed(2);
+      const fill = v ? (i === 23 ? "var(--accent-2)" : "var(--accent)") : "var(--fill-track)";
+      return '<rect x="' + x + '" y="' + y + '" width="' + (w * 0.6).toFixed(2) + '" height="' + bh.toFixed(2) + '" rx="1" fill="' + fill + '" opacity="' + (v ? 0.85 : 1) + '"/>';
+    })
+    .join("");
+  return '<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">' + rects + "</svg>";
+}
+
+function renderSnippets() {
+  const remoteUrl = location.origin + "/mcp";
+  const codex = $("#snip-codex");
+  if (!codex) return;
+  codex.textContent = '[mcp_servers.search-rotation]\ncommand = "npx"\nargs = ["-y", "search-rotation"]';
+  $("#snip-claude").textContent = JSON.stringify(
+    { mcpServers: { "search-rotation": { command: "npx", args: ["-y", "search-rotation"] } } },
+    null,
+    2,
+  );
+  $("#snip-remote").textContent = "URL: " + remoteUrl + "\n" + "Authorization: Bearer <token>";
+}
+
+/* ---------- View: Engines ---------- */
+
+function renderEngines() {
+  const wrap = $("#view");
+  // Ungespeicherte Eingaben über das Re-Render retten
   const saved = {};
   wrap.querySelectorAll(".keyinput").forEach((el) => {
     if (el.value) saved["key:" + el.dataset.id] = el.value;
@@ -448,71 +443,65 @@ function renderSearch() {
   wrap.querySelectorAll(".extrainput").forEach((el) => {
     if (el.value) saved["extra:" + el.dataset.id + ":" + el.dataset.extra] = el.value;
   });
-  wrap.innerHTML = "";
-  for (const e of state.config.engines) {
-    const m = metaOf(e.id);
-    const st = statusOf(e.id);
 
-    const card = document.createElement("div");
-    card.className = "card" + (e.enabled ? "" : " off");
-    card.draggable = true;
-    card.dataset.id = e.id;
+  const engines = sortedEngines();
+  const inRotation = engines.filter((e) => e.enabled).length;
+  const keys = engines.filter((e) => e.hasKey).length;
 
-    const caps = (m.capabilities || []).map((c) => t("cap." + c)).join(" · ");
-    const head = document.createElement("div");
-    head.className = "head";
-    head.innerHTML =
-      '<span class="handle" title="Drag">≡</span>' +
-      '<label class="switch"><input type="checkbox" data-act="toggle"' + (e.enabled ? " checked" : "") +
-      '><span></span></label>' +
-      '<span class="name">' + esc(m.label || e.id) + "</span>" +
-      (m.keyless === "ip" ? '<span class="badge ip">' + esc(t("badge.keyless")) + "</span>" : "") +
-      (m.quotaEndpoint ? '<span class="badge quota">' + esc(t("badge.quota")) + "</span>" : "") +
-      '<span class="caps">' + esc(caps) + "</span>";
-    card.appendChild(head);
+  const cards = engines
+    .map((e) => {
+      const open = state.openEngines.has(e.id);
+      const caps = (e.capabilities || []).map((c) => '<span class="badge">' + esc(t("cap." + c)) + "</span>").join("");
+      const extras = (e.extraFields || [])
+        .map(
+          (f) =>
+            '<div class="drawer-row"><input type="text" class="extrainput" data-id="' + esc(e.id) + '" data-extra="' + esc(f.key) +
+            '" placeholder="' + esc(f.label) + (e.extrasSet && e.extrasSet[f.key] ? " · " + esc(t("extra.set")) : "") + '">' +
+            '<button class="btn" data-act="save-extra">' + esc(t("btn.save")) + "</button></div>",
+        )
+        .join("");
+      return (
+        '<div class="engine-card' + (e.enabled ? "" : " off") + (open ? " open" : "") + '" draggable="true" data-id="' + esc(e.id) + '">' +
+        '<div class="engine-head">' +
+        '<span class="handle" title="Drag & Drop"><svg width="16" height="16"><use href="#i-grip"/></svg></span>' +
+        '<span class="pos-badge">' + (e.enabled ? e.searchPosition + 1 : "–") + "</span>" +
+        '<span class="avatar" style="' + avatarStyle(e.id) + '">' + esc((e.label || e.id)[0]) + "</span>" +
+        '<span class="engine-title"><span class="engine-name">' + esc(e.label || e.id) + "</span>" +
+        '<span class="engine-badges">' +
+        (e.keyless === "ip" ? '<span class="badge ip">' + esc(t("badge.keyless")) + "</span>" : "") +
+        (e.quotaEndpoint ? '<span class="badge quota">' + esc(t("badge.quota")) + "</span>" : "") +
+        "</span></span>" +
+        '<label class="switch"><input type="checkbox" data-act="toggle"' + (e.enabled ? " checked" : "") + '><span class="track-el"></span></label>' +
+        '<span class="engine-quota" data-quota="' + esc(e.id) + '">' + quotaHtml(e) + "</span>" +
+        '<button class="drawer-toggle" data-act="drawer" aria-expanded="' + open + '" title="' + esc(open ? t("engines.collapse") : t("engines.config")) + '"><svg width="17" height="17"><use href="#i-chevron"/></svg></button>' +
+        "</div>" +
+        '<div class="drawer">' +
+        '<div class="drawer-row">' +
+        '<input type="password" class="keyinput" data-id="' + esc(e.id) + '" placeholder="' +
+        (e.hasKey ? esc(t("key.replace", { masked: e.keyMasked })) : esc(t("key.set"))) + '">' +
+        '<button class="btn btn-primary" data-act="save-key">' + esc(t("btn.save")) + "</button>" +
+        (e.hasKey ? '<button class="btn btn-danger" data-act="clear-key">' + esc(t("key.clear")) + "</button>" : "") +
+        "</div>" +
+        extras +
+        '<div class="drawer-meta"><span class="caps-chips">' + caps + "</span>" +
+        '<a class="signup" href="' + esc(e.signupUrl || e.homepage || "#") + '" target="_blank" rel="noreferrer">' + esc(t("signup")) + ' <svg width="12" height="12"><use href="#i-external"/></svg></a>' +
+        '<button class="btn" data-act="test"><svg width="13" height="13"><use href="#i-zap"/></svg> Test</button></div>' +
+        '<div class="testout" data-testout="' + esc(e.id) + '"></div>' +
+        (e.notes ? '<div class="notes">' + esc(e.notes) + "</div>" : "") +
+        "</div></div>"
+      );
+    })
+    .join("");
 
-    const quota = document.createElement("div");
-    quota.className = "quota";
-    quota.dataset.quota = e.id;
-    quota.innerHTML = quotaHtml(st);
-    card.appendChild(quota);
+  wrap.innerHTML =
+    '<div class="page">' +
+    pageHead(t("engines.title"), t("engines.sub")) +
+    (anyKeySet() ? "" : '<div class="banner"><svg width="16" height="16"><use href="#i-alert"/></svg><span>' + esc(t("notice.nokeys")) + "</span></div>") +
+    '<div style="margin-bottom:14px"><span class="engines-stat"><span class="dot"></span>' +
+    esc(t("engines.stat", { in: inRotation, keys, total: engines.length })) +
+    "</span></div>" +
+    '<div class="engine-list">' + cards + "</div></div>";
 
-    const keyRow = document.createElement("div");
-    keyRow.className = "keyrow";
-    keyRow.innerHTML =
-      '<input type="password" class="keyinput" data-id="' + esc(e.id) + '" placeholder="' +
-      (e.hasKey ? esc(t("key.replace", { masked: e.keyMasked })) : esc(t("key.set"))) +
-      '">' +
-      '<button data-act="save-key">' + esc(t("btn.save")) + "</button>" +
-      (e.hasKey ? '<button data-act="clear-key" title="' + esc(t("key.clear")) + '">✕</button>' : "") +
-      '<button data-act="test-search">' + esc(t("btn.testSearch")) + "</button>" +
-      '<a class="signup" href="' + esc(m.signupUrl || m.homepage || "#") + '" target="_blank" rel="noreferrer">' + esc(t("signup")) + "</a>";
-    card.appendChild(keyRow);
-
-    for (const f of m.extraFields || []) {
-      const row = document.createElement("div");
-      row.className = "keyrow extra";
-      row.innerHTML =
-        '<input type="text" class="extrainput" data-id="' + esc(e.id) + '" data-extra="' + esc(f.key) +
-        '" placeholder="' + esc(f.label) + (e.extrasSet && e.extrasSet[f.key] ? " " + esc(t("extra.set")) : "") + '">' +
-        '<button data-act="save-extra">' + esc(t("btn.save")) + "</button>";
-      card.appendChild(row);
-    }
-
-    const testOut = document.createElement("div");
-    testOut.className = "testout";
-    testOut.dataset.testout = e.id;
-    card.appendChild(testOut);
-
-    if (m.notes) {
-      const notes = document.createElement("div");
-      notes.className = "notes";
-      notes.textContent = m.notes;
-      card.appendChild(notes);
-    }
-
-    wrap.appendChild(card);
-  }
   // Gesicherte Eingaben zurückschreiben
   wrap.querySelectorAll(".keyinput").forEach((el) => {
     const v = saved["key:" + el.dataset.id];
@@ -522,294 +511,409 @@ function renderSearch() {
     const v = saved["extra:" + el.dataset.id + ":" + el.dataset.extra];
     if (v) el.value = v;
   });
-  enableDrag(wrap, (from, to) => {
-    const ids = state.config.engines.map((e) => e.id);
-    reorder(ids, from, to);
-    queuePut((cfg) => ({
-      engines: ids.map((id) => ({ id, enabled: cfg.engines.find((x) => x.id === id).enabled })),
-      fetchOrder: cfg.fetchOrder,
-      settings: { port: cfg.settings.port },
-    }));
-  });
 }
 
-function renderFetch() {
-  const wrap = $("#fetch-engines");
-  wrap.innerHTML = "";
-  for (const id of state.config.fetchOrder) {
-    const m = metaOf(id);
-    const e = cfgOf(id);
-    const st = statusOf(id);
-    const row = document.createElement("div");
-    row.className = "row" + (e.enabled ? "" : " off");
-    row.draggable = true;
-    row.dataset.id = id;
-    row.innerHTML =
-      '<span class="handle">≡</span>' +
-      '<span class="name">' + esc(m.label || id) + "</span>" +
-      '<span class="caps">' + esc(e.enabled ? t("active") : t("fetch.inactive")) + "</span>" +
-      '<span class="quota-inline" data-quota="' + esc(id) + '">' + quotaHtml(st) + "</span>" +
-      '<button data-act="test-fetch">' + esc(t("btn.testFetch")) + "</button>";
-    wrap.appendChild(row);
-  }
-  enableDrag(wrap, (from, to) => {
-    const order = [...state.config.fetchOrder];
-    reorder(order, from, to);
-    queuePut((cfg) => ({
-      engines: cfg.engines.map((e) => ({ id: e.id, enabled: e.enabled })),
-      fetchOrder: order,
-      settings: { port: cfg.settings.port },
-    }));
-  });
-}
+/** FLIP: Positionen vor/nach dem Re-Render animieren. */
+function flipReorder(container, from, to) {
+  const before = new Map();
+  container.querySelectorAll("[data-id]").forEach((el) => before.set(el.dataset.id, el.getBoundingClientRect().top));
 
-function renderSnippets() {
-  const remoteUrl = location.origin + "/mcp";
-  $("#snip-codex").textContent =
-    '[mcp_servers.search-rotation]\ncommand = "npx"\nargs = ["-y", "search-rotation"]';
-  $("#snip-claude").textContent = JSON.stringify(
-    { mcpServers: { "search-rotation": { command: "npx", args: ["-y", "search-rotation"] } } },
-    null,
-    2,
-  );
-  $("#snip-remote").textContent =
-    "URL: " + remoteUrl + "\n" + "Authorization: Bearer <token>";
-}
-
-/* ---------- history ---------- */
-
-async function loadHistory() {
-  const data = await api("/api/history?limit=50");
-  renderHistory(data.entries || []);
-}
-
-function renderHistory(entries) {
-  const wrap = $("#history-list");
-  if (!entries.length) {
-    wrap.innerHTML = '<span class="muted">' + esc(t("history.empty")) + "</span>";
-    return;
-  }
-  wrap.innerHTML = "";
-  for (const e of entries) {
-    const key = e.ts;
-    const det = document.createElement("details");
-    det.className = "hist" + (e.ok ? "" : " fail");
-    det.dataset.key = key;
-    if (state.historyOpen.has(key)) det.open = true;
-    det.addEventListener("toggle", () => {
-      if (det.open) state.historyOpen.add(key);
-      else state.historyOpen.delete(key);
-    });
-
-    const failChips = (e.attempts || [])
-      .filter((a) => !a.ok)
-      .map((a) => '<span class="chip fail" title="' + esc(a.error || "") + '">' + esc(a.engine) + "</span>")
-      .join("");
-    const engineHtml =
-      (e.engine ? '<span class="chip ok">' + esc(e.engine) + "</span>" : "") + failChips;
-    const meta =
-      e.ok && e.kind === "search" && e.result?.count !== undefined
-        ? t("hist.results", { n: e.result.count })
-        : e.ok && e.result?.chars !== undefined
-          ? t("hist.chars", { n: e.result.chars })
-          : "";
-
-    const summary = document.createElement("summary");
-    summary.innerHTML =
-      '<span class="htime">' + esc(new Date(e.ts).toLocaleTimeString()) + "</span>" +
-      '<span class="hkind ' + esc(e.kind) + '">' + esc(t(e.kind === "search" ? "hist.search" : "hist.fetch")) + "</span>" +
-      '<span class="hinput" title="' + esc(e.input) + '">' + esc(e.input) + "</span>" +
-      engineHtml +
-      (e.ok
-        ? '<span class="ok">' + esc(meta) + " · " + esc(e.ms) + " ms</span>"
-        : '<span class="error">' + esc(t("hist.failed")) + " · " + esc(e.ms) + " ms</span>");
-    det.appendChild(summary);
-
-    const body = document.createElement("div");
-    body.className = "histbody";
-    let html = "";
-    if (e.error) html += '<p class="error">' + esc(e.error) + "</p>";
-    if ((e.attempts || []).length) {
-      html +=
-        "<p><strong>" + esc(t("hist.attempts")) + ":</strong></p><ul class='att'>" +
-        e.attempts
-          .map((a) => "<li>" + esc(a.engine) + " — " + (a.ok ? "✓" : "✗ " + esc(a.error || "")) + " (" + a.ms + " ms)</li>")
-          .join("") +
-        "</ul>";
-    }
-    if (e.result?.items?.length) {
-      html +=
-        "<ul class='hitems'>" +
-        e.result.items
-          .map(
-            (i) =>
-              "<li><a href='" + esc(i.url) + "' target='_blank' rel='noreferrer'>" + esc(i.title || i.url) + "</a>" +
-              (i.snippet ? "<span class='muted'> — " + esc(i.snippet.slice(0, 200)) + "</span>" : "") + "</li>",
-          )
-          .join("") +
-        "</ul>";
-    }
-    if (e.result?.markdown) html += "<pre>" + esc(e.result.markdown.slice(0, 2000)) + "</pre>";
-    body.innerHTML = html;
-    det.appendChild(body);
-    wrap.appendChild(det);
-  }
-}
-
-/* ---------- drag & drop ---------- */
-
-function enableDrag(container, onReorder) {
-  // Idempotent: Listener nur EINMAL pro Container registrieren (Re-Renders
-  // aktualisieren nur den Callback) — sonst akkumulieren Listener pro Render.
-  if (container.__dragInit) {
-    container.__dragOnReorder = onReorder;
-    return;
-  }
-  container.__dragInit = true;
-  container.addEventListener("dragstart", (ev) => {
-    const el = ev.target.closest("[draggable]");
-    if (!el) return;
-    state.dragFrom = el.dataset.id;
-    el.classList.add("dragging");
-    ev.dataTransfer.effectAllowed = "move";
-    try {
-      ev.dataTransfer.setData("text/plain", el.dataset.id);
-    } catch {}
-  });
-  container.addEventListener("dragend", (ev) => {
-    const el = ev.target.closest("[draggable]");
-    if (el) el.classList.remove("dragging");
-  });
-  container.addEventListener("dragover", (ev) => ev.preventDefault());
-  container.addEventListener("drop", (ev) => {
-    ev.preventDefault();
-    const toEl = ev.target.closest("[draggable]");
-    const from = state.dragFrom;
-    state.dragFrom = null;
-    if (toEl && from && from !== toEl.dataset.id && container.__dragOnReorder) {
-      container.__dragOnReorder(from, toEl.dataset.id);
-    }
-  });
-}
-
-function reorder(list, from, to) {
-  const i = list.indexOf(from);
-  const j = list.indexOf(to);
+  const list = state.config.engines;
+  const i = list.findIndex((e) => e.id === from);
+  const j = list.findIndex((e) => e.id === to);
   if (i < 0 || j < 0) return;
   list.splice(j, 0, list.splice(i, 1)[0]);
+  renderEngines();
+
+  container.querySelectorAll("[data-id]").forEach((el) => {
+    const prev = before.get(el.dataset.id);
+    if (prev === undefined) return;
+    const dy = prev - el.getBoundingClientRect().top;
+    if (Math.abs(dy) < 2) return;
+    el.style.transition = "none";
+    el.style.transform = "translateY(" + dy + "px)";
+    requestAnimationFrame(() => {
+      el.classList.add("flip-anim");
+      el.style.transition = "";
+      el.style.transform = "";
+      setTimeout(() => el.classList.remove("flip-anim"), 320);
+    });
+  });
 }
 
-/* ---------- events ---------- */
+/* ---------- View: Verlauf ---------- */
 
-$("#lang").addEventListener("change", (ev) => {
-  lang = ev.target.value;
-  localStorage.setItem("sr_lang", lang);
-  applyI18n();
-  render();
-  loadHistory().catch(() => {});
+function renderHistory() {
+  const f = state.filters;
+  const q = f.q.trim().toLowerCase();
+  const entries = state.history.filter((e) => {
+    if (f.kind !== "all" && e.kind !== f.kind) return false;
+    if (f.engine && e.engine !== f.engine) return false;
+    if (q) {
+      const hay = (e.input + " " + (e.engine || "") + " " + (e.attempts || []).map((a) => a.engine).join(" ")).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const fails = entries.filter((e) => !e.ok).length;
+
+  const engineOptions = sortedEngines()
+    .map((e) => '<option value="' + esc(e.id) + '"' + (f.engine === e.id ? " selected" : "") + ">" + esc(e.label || e.id) + "</option>")
+    .join("");
+
+  const rows = entries
+    .map((e) => {
+      const key = e.ts;
+      const failChips = (e.attempts || [])
+        .filter((a) => !a.ok)
+        .map((a) => '<span class="chip fail" title="' + esc(a.error || "") + '">' + esc(a.engine) + "</span>")
+        .join("");
+      const meta =
+        e.ok && e.kind === "search" && e.result?.count !== undefined
+          ? t("hist.results", { n: e.result.count })
+          : e.ok && e.result?.chars !== undefined
+            ? t("hist.chars", { n: e.result.chars })
+            : "";
+
+      let body = "";
+      if (e.error) body += '<p class="error-text">' + esc(e.error) + "</p>";
+      if ((e.attempts || []).length) {
+        body +=
+          "<p><strong>" + esc(t("hist.attempts")) + ":</strong></p><ul class='att'>" +
+          e.attempts.map((a) => "<li>" + esc(a.engine) + " — " + (a.ok ? "✓" : "✗ " + esc(a.error || "")) + " (" + fmtMs(a.ms) + ")</li>").join("") +
+          "</ul>";
+      }
+      if (e.result?.items?.length) {
+        body +=
+          "<p><strong>" + esc(t("hist.items")) + ":</strong></p><ul class='hitems'>" +
+          e.result.items
+            .map(
+              (i) =>
+                "<li><a href='" + esc(i.url) + "' target='_blank' rel='noreferrer'>" + esc(i.title || i.url) + "</a>" +
+                (i.snippet ? "<div class='snip'>" + esc(i.snippet.slice(0, 200)) + "</div>" : "") + "</li>",
+            )
+            .join("") +
+          "</ul>";
+      }
+      if (e.result?.markdown) {
+        body += "<p><strong>" + esc(t("hist.markdown")) + ":</strong></p><pre>" + esc(e.result.markdown.slice(0, 2000)) + "</pre>";
+      }
+
+      return (
+        '<details class="hist' + (e.ok ? "" : " fail") + '"' + (state.historyOpen.has(key) ? " open" : "") + ' data-key="' + esc(key) + '">' +
+        "<summary>" +
+        '<span class="hkind-icon ' + esc(e.kind) + '"><svg width="14" height="14"><use href="#i-' + (e.kind === "search" ? "search" : "link") + '"/></svg></span>' +
+        '<span class="htime">' + new Date(e.ts).toLocaleTimeString(lang, { hour12: false }) + "</span>" +
+        '<span class="hinput" title="' + esc(e.input) + '">' + esc(e.input) + "</span>" +
+        '<span class="chips">' + (e.engine ? '<span class="chip ok">' + esc(e.engine) + "</span>" : "") + failChips + "</span>" +
+        '<span class="hmeta">' +
+        (e.ok ? esc(meta) + " · " + fmtMs(e.ms) : '<span class="fail-mark">' + esc(t("hist.failed")) + "</span> · " + fmtMs(e.ms)) +
+        "</span>" +
+        '<svg class="chev" width="15" height="15"><use href="#i-chevron"/></svg>' +
+        "</summary>" +
+        (body ? '<div class="histbody">' + body + "</div>" : "") +
+        "</details>"
+      );
+    })
+    .join("");
+
+  $("#view").innerHTML =
+    '<div class="page">' +
+    pageHead(t("history.title"), t("history.sub")) +
+    '<div class="hist-toolbar">' +
+    '<div class="seg" role="tablist">' +
+    segBtn("all", t("hist.filter.all")) +
+    segBtn("search", t("hist.filter.search")) +
+    segBtn("fetch", t("hist.filter.fetch")) +
+    "</div>" +
+    '<select id="hist-engine"><option value="">' + esc(t("hist.filter.all")) + "</option>" + engineOptions + "</select>" +
+    '<input type="text" id="hist-q" placeholder="' + esc(t("hist.search.ph")) + '" value="' + esc(f.q) + '">' +
+    '<span class="spacer"></span>' +
+    '<span class="live-dot' + (state.livePaused ? " paused" : "") + '" id="live-dot"><span class="pulse"></span></span>' +
+    '<button class="btn" data-act="live-toggle">' + esc(state.livePaused ? t("hist.resume") : t("hist.pause")) + "</button>" +
+    '<button class="btn btn-danger" data-act="hist-clear"><svg width="13" height="13"><use href="#i-trash"/></svg> ' + esc(t("history.clear")) + "</button>" +
+    "</div>" +
+    '<p class="hist-summary">' + esc(t("hist.shown", { n: entries.length, f: fails })) + "</p>" +
+    (entries.length
+      ? '<div class="hist-list">' + rows + "</div>"
+      : '<div class="panel"><div class="empty"><span class="empty-icon"><svg width="24" height="24"><use href="#i-clock"/></svg></span>' +
+        '<span class="empty-title">' + esc(t("history.empty")) + '</span><span class="empty-hint">' + esc(t("history.emptyHint")) + "</span></div></div>") +
+    "</div>";
+
+  document.querySelectorAll(".hist").forEach((det) => {
+    det.addEventListener("toggle", () => {
+      const k = det.dataset.key;
+      if (det.open) state.historyOpen.add(k);
+      else state.historyOpen.delete(k);
+    });
+  });
+
+  const qInput = $("#hist-q");
+  qInput.addEventListener("input", () => {
+    state.filters.q = qInput.value;
+    clearTimeout(qInput.__t);
+    qInput.__t = setTimeout(() => renderHistory(), 220);
+  });
+  $("#hist-engine").addEventListener("change", (ev) => {
+    state.filters.engine = ev.target.value;
+    renderHistory();
+  });
+}
+
+function segBtn(kind, label) {
+  return '<button data-kind="' + kind + '"' + (state.filters.kind === kind ? ' class="active"' : "") + ">" + esc(label) + "</button>";
+}
+
+/* ---------- Drag & Drop (delegiert, einmalig) ---------- */
+
+document.addEventListener("dragstart", (ev) => {
+  const card = ev.target.closest?.("[draggable]");
+  if (!card) return;
+  if (!ev.target.closest(".handle")) {
+    // Drag nur am Griff starten — Inputs/Buttons bleiben normal nutzbar
+    ev.preventDefault();
+    return;
+  }
+  state.dragFrom = card.dataset.id;
+  card.classList.add("dragging");
+  ev.dataTransfer.effectAllowed = "move";
+  try {
+    ev.dataTransfer.setData("text/plain", card.dataset.id);
+  } catch {}
 });
 
+document.addEventListener("dragend", (ev) => {
+  const card = ev.target.closest?.("[draggable]");
+  if (card) card.classList.remove("dragging");
+  document.querySelectorAll(".drag-over").forEach((x) => x.classList.remove("drag-over"));
+});
+
+document.addEventListener("dragover", (ev) => {
+  const card = ev.target.closest?.("[draggable]");
+  if (!card || !state.dragFrom) return;
+  ev.preventDefault();
+  document.querySelectorAll(".drag-over").forEach((x) => x.classList.remove("drag-over"));
+  card.classList.add("drag-over");
+});
+
+document.addEventListener("drop", (ev) => {
+  const toEl = ev.target.closest?.("[draggable]");
+  const from = state.dragFrom;
+  state.dragFrom = null;
+  document.querySelectorAll(".drag-over").forEach((x) => x.classList.remove("drag-over"));
+  ev.preventDefault();
+  if (!toEl || !from || from === toEl.dataset.id || state.route !== "/engines") return;
+  const container = $(".engine-list");
+  if (!container) return;
+  flipReorder(container, from, toEl.dataset.id);
+  queuePut((cfg) => ({
+    engines: cfg.engines.map((e) => ({ id: e.id, enabled: e.enabled })),
+    fetchOrder: cfg.fetchOrder,
+    settings: { port: cfg.settings.port },
+  }));
+});
+
+/* ---------- Events (delegiert) ---------- */
+
 document.addEventListener("change", (ev) => {
-  if (ev.target.matches && ev.target.matches('input[data-act="toggle"]')) {
-    const id = ev.target.closest("[data-id]").dataset.id;
-    const engines = state.config.engines.map((e) =>
-      e.id === id ? { id, enabled: ev.target.checked } : { id: e.id, enabled: e.enabled },
-    );
-    putConfig(engines).catch((err) => alert(err.message));
-  }
+  if (!ev.target.matches || !ev.target.matches('input[data-act="toggle"]')) return;
+  const id = ev.target.closest("[data-id]").dataset.id;
+  queuePut((cfg) => ({
+    engines: cfg.engines.map((e) => (e.id === id ? { id, enabled: ev.target.checked } : { id: e.id, enabled: e.enabled })),
+    fetchOrder: cfg.fetchOrder,
+    settings: { port: cfg.settings.port },
+  }));
 });
 
 document.addEventListener("click", async (ev) => {
+  // Kopieren-Buttons
   const copyBtn = ev.target.closest("button[data-copy]");
   if (copyBtn) {
     navigator.clipboard.writeText(document.getElementById(copyBtn.dataset.copy).textContent);
     copyBtn.textContent = t("btn.copied");
+    toast("info", t("toast.copied"));
     setTimeout(() => (copyBtn.textContent = t("btn.copy")), 1500);
     return;
   }
 
-  if (ev.target.closest("#history-clear")) {
+  // Verlauf löschen
+  const clearBtn = ev.target.closest('[data-act="hist-clear"]');
+  if (clearBtn) {
     if (confirm(t("history.confirm"))) {
-      await api("/api/history", { method: "DELETE" });
-      state.historyOpen.clear();
-      loadHistory().catch(() => {});
+      try {
+        await api("/api/history", { method: "DELETE" });
+        state.historyOpen.clear();
+        state.history = [];
+        renderHistory();
+        toast("ok", t("toast.saved"));
+      } catch (err) {
+        if (err.message !== "unauthorized") toast("error", t("toast.error", { msg: err.message }));
+      }
     }
     return;
   }
 
+  // Live pausieren/fortsetzen
+  if (ev.target.closest('[data-act="live-toggle"]')) {
+    state.livePaused = !state.livePaused;
+    renderHistory();
+    return;
+  }
+
+  // Segment-Filter
+  const seg = ev.target.closest(".seg [data-kind]");
+  if (seg) {
+    state.filters.kind = seg.dataset.kind;
+    renderHistory();
+    return;
+  }
+
+  // Drawer auf/zu
+  const drawerBtn = ev.target.closest('[data-act="drawer"]');
+  if (drawerBtn) {
+    const id = drawerBtn.closest("[data-id]").dataset.id;
+    if (state.openEngines.has(id)) state.openEngines.delete(id);
+    else state.openEngines.add(id);
+    renderEngines();
+    return;
+  }
+
+  // Engine-Aktionen
   const btn = ev.target.closest("button[data-act]");
   if (!btn) return;
+  const act = btn.dataset.act;
+  if (!["save-key", "clear-key", "save-extra", "test"].includes(act)) return;
   const host = btn.closest("[data-id]");
   if (!host) return;
   const id = host.dataset.id;
-  const act = btn.dataset.act;
 
   try {
     if (act === "save-key") {
       const input = host.querySelector(".keyinput");
-      const engines = state.config.engines.map((e) =>
-        e.id === id ? { id, enabled: e.enabled, apiKey: input.value } : { id: e.id, enabled: e.enabled },
-      );
-      await putConfig(engines);
+      queuePut((cfg) => ({
+        engines: cfg.engines.map((e) => (e.id === id ? { id, enabled: e.enabled, apiKey: input.value } : { id: e.id, enabled: e.enabled })),
+        fetchOrder: cfg.fetchOrder,
+        settings: { port: cfg.settings.port },
+      }));
     } else if (act === "clear-key") {
-      const engines = state.config.engines.map((e) =>
-        e.id === id ? { id, enabled: e.enabled, apiKey: null } : { id: e.id, enabled: e.enabled },
-      );
-      await putConfig(engines);
+      queuePut((cfg) => ({
+        engines: cfg.engines.map((e) => (e.id === id ? { id, enabled: e.enabled, apiKey: null } : { id: e.id, enabled: e.enabled })),
+        fetchOrder: cfg.fetchOrder,
+        settings: { port: cfg.settings.port },
+      }));
     } else if (act === "save-extra") {
-      const input = host.querySelector(".extrainput[data-extra]");
+      const input = host.querySelector('.extrainput[data-extra="' + CSS.escape(btn.closest(".drawer-row").querySelector(".extrainput").dataset.extra) + '"]');
       const key = input.dataset.extra;
       const value = input.value.trim();
-      const engines = state.config.engines.map((e) =>
-        e.id === id
-          ? { id, enabled: e.enabled, extra: { [key]: value ? value : null } }
-          : { id: e.id, enabled: e.enabled },
-      );
-      await putConfig(engines);
-    } else if (act === "test-search" || act === "test-fetch") {
-      const kind = act === "test-search" ? "search" : "fetch";
-      const out = document.querySelector('[data-testout="' + id + '"]');
-      out.innerHTML = esc(t("test.running"));
-      const r = await api("/api/test", { method: "POST", body: { id, kind } });
+      queuePut((cfg) => ({
+        engines: cfg.engines.map((e) =>
+          e.id === id ? { id, enabled: e.enabled, extra: { [key]: value || null } } : { id: e.id, enabled: e.enabled },
+        ),
+        fetchOrder: cfg.fetchOrder,
+        settings: { port: cfg.settings.port },
+      }));
+    } else if (act === "test") {
+      const out = document.querySelector('[data-testout="' + CSS.escape(id) + '"]');
+      out.innerHTML = '<span class="muted">' + esc(t("test.running")) + "</span>";
+      const r = await api("/api/test", { method: "POST", body: { id, kind: "search" } });
       if (r.ok) {
         out.innerHTML =
-          '<span class="ok">✓ ' +
-          esc(kind === "search" ? t("test.okSearch", { count: r.count, ms: r.ms }) : t("test.okFetch", { chars: r.chars, ms: r.ms })) +
-          "</span>" +
+          '<span class="ok">✓ ' + esc(t("test.ok", { count: r.count, ms: fmtMs(r.ms) })) + "</span>" +
           (r.preview ? "<pre>" + esc(r.preview) + "</pre>" : "");
       } else {
         out.innerHTML = '<span class="error">✗ ' + esc(r.error) + "</span>";
       }
     }
   } catch (err) {
-    if (err.message !== "unauthorized") alert(err.message);
+    if (err.message !== "unauthorized") toast("error", t("toast.error", { msg: err.message }));
   }
 });
 
-async function autoRefreshQuotas() {
+/* ---------- Sprach-Dropdown & Theme-Button ---------- */
+
+const langBtn = $("#lang-btn");
+const langMenu = $("#lang-menu");
+
+langBtn.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  const open = !langMenu.hidden;
+  langMenu.hidden = open;
+  langBtn.setAttribute("aria-expanded", String(!open));
+});
+
+langMenu.addEventListener("click", (ev) => {
+  const item = ev.target.closest("[data-lang]");
+  if (!item) return;
+  lang = item.dataset.lang;
+  localStorage.setItem("sr_lang", lang);
+  langMenu.hidden = true;
+  langBtn.setAttribute("aria-expanded", "false");
+  applyI18n();
+  render();
+  if (state.route === "/history" || state.route === "/") loadHistory().then(render).catch(() => {});
+});
+
+document.addEventListener("click", (ev) => {
+  if (!langMenu.hidden && !ev.target.closest("#lang")) {
+    langMenu.hidden = true;
+    langBtn.setAttribute("aria-expanded", "false");
+  }
+});
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && !langMenu.hidden) {
+    langMenu.hidden = true;
+    langBtn.setAttribute("aria-expanded", "false");
+  }
+});
+
+$("#theme-btn").addEventListener("click", () => {
+  setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* ---------- Polling ---------- */
+
+setInterval(() => {
+  if (document.hidden || state.unauthorized || state.livePaused) return;
+  if (state.route !== "/history" && state.route !== "/") return;
+  loadHistory()
+    .then(() => {
+      if (state.route === "/history") renderHistory();
+      else if (state.route === "/") {
+        // Übersicht: nur Liste/Sparkline austauschen wäre feiner — Komplett-Render ist hier unschädlich (keine Inputs)
+        render();
+      }
+    })
+    .catch(() => {});
+}, 5000);
+
+setInterval(async () => {
+  if (document.hidden || state.unauthorized) return;
   try {
     await refreshStatus();
   } catch {
     return;
   }
-  for (const st of state.status) {
-    document.querySelectorAll('[data-quota="' + st.id + '"]').forEach((el) => {
-      el.innerHTML = quotaHtml(st);
-    });
+  if (state.route === "/engines") {
+    // Quota-Zeilen gezielt aktualisieren — keine Inputs/Drawer zerstören
+    for (const st of state.status) {
+      document.querySelectorAll('[data-quota="' + CSS.escape(st.id) + '"]').forEach((el) => {
+        el.innerHTML = quotaHtml(st);
+      });
+    }
+  } else if (state.route === "/") {
+    render();
   }
-}
-
-setInterval(() => {
-  if (!document.hidden) loadHistory().catch(() => {});
-}, 5000);
-setInterval(() => {
-  if (!document.hidden) autoRefreshQuotas();
 }, 30000);
-$("#refresh").addEventListener("click", () => load().catch(() => {}));
 
+window.addEventListener("resize", positionNavInd);
+window.addEventListener("hashchange", () => setRoute(parseHash()));
+
+/* ---------- Boot ---------- */
+
+initTheme();
+applyI18n();
+setRoute(parseHash());
 load().catch((e) => {
-  if (e.message !== "unauthorized") {
-    $("#notice").textContent = "Fehler: " + e.message;
-    $("#notice").classList.remove("hidden");
-  }
+  if (e.message !== "unauthorized") toast("error", t("toast.error", { msg: e.message }));
 });
