@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { buildWebApp } from "../src/web/app.js";
 import type { WebDeps } from "../src/web/app.js";
+import { VERSION } from "../src/version.js";
 import type { EngineAdapter, EngineMeta, TestResult } from "../src/types.js";
 import type { PolyConfig } from "../src/config.js";
 import type { HistoryEntry } from "../src/history.js";
@@ -513,7 +514,8 @@ test("GET /api/status und /api/meta nutzen die injizierten Deps", async () => {
 
   const meta = await app.request("/api/meta");
   assert.equal(meta.status, 200);
-  assert.deepEqual(await meta.json(), { version: "0.1.0", configPath: deps.configPath, month: "2026-09" });
+  // Version gegen die echte Quelle vergleichen — nicht hart pinnt (Bump-sicher)
+  assert.deepEqual(await meta.json(), { version: VERSION, configPath: deps.configPath, month: "2026-09" });
 
   const status = await app.request("/api/status");
   assert.equal(status.status, 200);
