@@ -1,0 +1,51 @@
+{
+  "name": "search-rotation",
+  "version": "0.1.0",
+  "description": "Round-robin web search over the free tiers of multiple search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina, DuckDuckGo) as an MCP server — with a local dashboard for API keys, engine order/toggles and live quota status.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Robin Bially",
+  "bin": {
+    "search-rotation": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "static",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "web-search",
+    "round-robin",
+    "free-tier",
+    "tavily",
+    "firecrawl",
+    "exa",
+    "parallel",
+    "search"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts --http --port 6277",
+    "start": "node dist/index.js --http --port 6277",
+    "test": "node --import tsx --test test/router.test.ts test/ddg.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.0",
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "hono": "^4.9.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

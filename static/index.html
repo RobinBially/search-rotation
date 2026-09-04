@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>search-rotation — Dashboard</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>search&#8209;rotation</h1>
+  <div class="sub">Round-Robin-Websuche über Gratis-Kontingente · <span id="version"></span> · <code id="configpath"></code></div>
+</header>
+<main>
+  <div id="notice" class="notice hidden"></div>
+
+  <section>
+    <h2>Such-Rotation <small>Reihenfolge per Drag &amp; Drop — Round Robin startet oben</small></h2>
+    <div id="search-engines" class="cards"></div>
+  </section>
+
+  <section>
+    <h2>Fetch-Rotation <small>Seiten abrufen / als Markdown extracten</small></h2>
+    <div id="fetch-engines" class="rows"></div>
+  </section>
+
+  <section>
+    <h2>MCP-Setup</h2>
+    <div class="snippets">
+      <div class="snippet">
+        <h3>Codex — <code>~/.codex/config.toml</code></h3>
+        <pre id="snip-codex"></pre>
+        <button data-copy="snip-codex">Kopieren</button>
+      </div>
+      <div class="snippet">
+        <h3>Claude Desktop / Claude Code</h3>
+        <pre id="snip-claude"></pre>
+        <button data-copy="snip-claude">Kopieren</button>
+      </div>
+      <div class="snippet">
+        <h3>Remote (Streamable HTTP)</h3>
+        <pre id="snip-remote"></pre>
+        <button data-copy="snip-remote">Kopieren</button>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  Quota-Zähler: lokal pro Kalendermonat · Remote-Quota wo verfügbar (5 Min Cache) ·
+  <button id="refresh">Jetzt aktualisieren</button> · Auto-Refresh alle 30 s
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>
