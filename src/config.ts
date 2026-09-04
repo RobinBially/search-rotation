@@ -30,13 +30,15 @@ export function configDir(): string {
 }
 
 export interface ConfigDefaults {
+  /** Alle bekannten Engine-Ids (auch fetch-only) */
+  knownIds: string[];
   searchOrder: string[];
   fetchOrder: string[];
   defaultEnabled: Record<string, boolean>;
 }
 
 export function normalizeConfig(raw: unknown, d: ConfigDefaults): PolyConfig {
-  const known = new Set(d.searchOrder);
+  const known = new Set(d.knownIds);
   const rawEngines: EngineConfig[] = Array.isArray((raw as any)?.engines)
     ? (raw as any).engines
         .filter((e: any) => e && typeof e.id === "string" && known.has(e.id))
@@ -55,7 +57,8 @@ export function normalizeConfig(raw: unknown, d: ConfigDefaults): PolyConfig {
         )
     : [];
   const have = new Set(rawEngines.map((e) => e.id));
-  for (const id of d.searchOrder) {
+  // Such-Engines in Such-Reihenfolge, danach evtl. fetch-only Engines (z. B. Jina)
+  for (const id of d.knownIds) {
     if (!have.has(id)) rawEngines.push({ id, enabled: d.defaultEnabled[id] ?? true });
   }
 

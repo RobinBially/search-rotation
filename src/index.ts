@@ -6,7 +6,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ConfigStore, configDir } from "./config.js";
-import { ADAPTERS, SEARCH_ORDER, FETCH_ORDER, DEFAULT_ENABLED } from "./engines/index.js";
+import { ADAPTERS, SEARCH_ORDER, FETCH_ORDER, DEFAULT_ENABLED, KNOWN_IDS } from "./engines/index.js";
 import { UsageStore } from "./usage.js";
 import { SearchRouter } from "./router.js";
 import { buildStatus } from "./status.js";
@@ -58,7 +58,12 @@ async function main(): Promise<void> {
   }).values;
 
   const store = new ConfigStore();
-  const defaults = { searchOrder: SEARCH_ORDER, fetchOrder: FETCH_ORDER, defaultEnabled: DEFAULT_ENABLED };
+  const defaults = {
+    knownIds: KNOWN_IDS,
+    searchOrder: SEARCH_ORDER,
+    fetchOrder: FETCH_ORDER,
+    defaultEnabled: DEFAULT_ENABLED,
+  };
   let cfg = store.load(defaults);
   const usage = new UsageStore(configDir());
   const router = new SearchRouter({ getConfig: () => cfg, usage, adapters: ADAPTERS });
@@ -161,6 +166,10 @@ async function main(): Promise<void> {
   } else {
     const mcp = buildMcpServer(mcpDeps);
     await mcp.connect(new StdioServerTransport());
+    // Sauberer Exit, wenn der MCP-Client stdin schließt (sonst hält der
+    // Dashboard-HTTP-Server den Prozess am Leben).
+    process.stdin.on("end", () => process.exit(0));
+    process.stdin.on("close", () => process.exit(0));
     console.error(
       `[search-rotation] v${VERSION} — MCP stdio aktiv.` +
         (dashboardEnabled ? ` Dashboard: ${dashboardUrl()}` : ""),

@@ -11,7 +11,7 @@ Eine Engine = ~1.000 Gratis-Anfragen/Monat. Sieben Engines rotiert = **~10.000+/
 | Tavily | ✅ | ✅ | 1.000 Credits | ✅ `/usage` | ❌ |
 | Firecrawl | ✅ | ✅ | 1.000 Credits | ✅ `credit-usage` | ⚠️ IP-basiert, winzig |
 | Parallel | ✅ | ✅ | **5.000 Requests** + $5 | ❌ | ❌ |
-| Exa | ✅ | ✅ | ~1.400 ($10 Guthaben) | ❌ | ❌ |
+| Exa | ✅ | ✅ | ~1.400 ($10 Guthaben) | ❌ | ✅ via `mcp.exa.ai` (IP-limitiert) |
 | Google PSE | ✅ | — | ~3.000 (100/Tag) | ❌ | ❌ (Key + CX nötig, standardmäßig aus) |
 | Jina Reader | — | ✅ | unbegrenzt-ish | ❌ | ✅ IP-basiert (~20 RPM) |
 | DuckDuckGo | ✅ | — | unbegrenzt-ish | ❌ | ✅ inoffiziell, zerbrechlich |
@@ -47,6 +47,14 @@ args = ["-y", "search-rotation"]
   }
 }
 ```
+
+**OpenCode V2** — `~/.config/opencode/opencode.json` unter `mcp.servers`:
+
+```jsonc
+"search-rotation": { "type": "local", "command": ["search-rotation"], "codemode": true }
+```
+
+Lokale Entwicklung: `chmod +x dist/index.js && ln -sf "$PWD/dist/index.js" ~/.local/bin/search-rotation` — der Eintrag bleibt über Updates stabil (`git pull && npm install && npm run build` genügt). Nach npm-Publish reicht stattdessen `["npx", "-y", "search-rotation"]`.
 
 Der stdio-Server startet **im selben Prozess** ein lokales Dashboard (`http://127.0.0.1:6277`, Link steht im Server-Log; der Agent kann es über das Tool `open_dashboard` öffnen). Dort: Keys hinterlegen, Reihenfolge ziehen, Engines togglen, Kontingente sehen, Engines live testen.
 

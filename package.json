@@ -34,7 +34,7 @@
     "build": "tsc",
     "dev": "tsx src/index.ts --http --port 6277",
     "start": "node dist/index.js --http --port 6277",
-    "test": "node --import tsx --test test/router.test.ts test/ddg.test.ts",
+    "test": "node --import tsx --test test/router.test.ts test/ddg.test.ts test/config.test.ts",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
