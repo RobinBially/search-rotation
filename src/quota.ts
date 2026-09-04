@@ -35,7 +35,11 @@ export function quotaStatus(adapter: EngineAdapter, ctx: EngineContext, cfg: Pol
   const policy = adapter.meta.quota;
   const period = adapter.meta.keyless === 'ip' && !ctx.apiKey ? 'ip' : policy?.period ?? 'month';
   const unit = policy?.unit ?? 'requests';
-  if (period === 'ip') return { period, unit, limit: null, used: null, source: 'unknown', estimated: true };
+  if (period === 'ip' || !ctx.apiKey) {
+    const count = usage.get(adapter.meta.id);
+    // Successful calls observed by this installation, never the shared IP balance.
+    return { period, unit: 'requests', limit: null, used: count.search + count.fetch, source: 'local', estimated: false };
+  }
   const count = period === 'day' ? usage.getDay(adapter.meta.id, policy?.timeZone) : usage.get(adapter.meta.id);
   const localUsed = unit === 'credits' ? count.consumed ?? count.search + count.fetch : count.search + count.fetch;
   const limit = period === 'day'

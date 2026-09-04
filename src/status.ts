@@ -128,7 +128,7 @@ export async function buildStatus(
     const meta = adapter.meta;
     const e = cfg.engines.find((x) => x.id === meta.id);
     const used = usage.get(meta.id);
-    const monthlyLimit = cfg.settings.monthlyLimits[meta.id] ?? meta.monthlyFree;
+    const monthlyLimit = !e?.apiKey ? 0 : cfg.settings.monthlyLimits[meta.id] ?? meta.monthlyFree;
 
     const { quota, error } = await fetchRemoteQuotaCached(adapter, {
       apiKey: e?.apiKey,
@@ -140,7 +140,7 @@ export async function buildStatus(
       label: meta.label,
       homepage: meta.homepage,
       signupUrl: meta.signupUrl,
-      capabilities: meta.capabilities,
+      capabilities: !e?.apiKey && meta.keylessCapabilities ? meta.keylessCapabilities : meta.capabilities,
       keyless: meta.keyless,
       notes: meta.notes,
       extraFields: meta.extraFields ?? [],

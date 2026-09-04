@@ -69,14 +69,16 @@ async function main(): Promise<void> {
     searchOrder: SEARCH_ORDER,
     fetchOrder: FETCH_ORDER,
     defaultEnabled: DEFAULT_ENABLED,
+    requiredKeyIds: ADAPTERS.filter(a => a.meta.keyless === "no").map(a => a.meta.id),
   };
   let cfg = store.load(defaults);
+  const getConfig = () => (cfg = store.load(defaults));
   const usage = new UsageStore(configDir());
   const history = new HistoryStore(path.join(configDir(), "history.json"));
-  const router = new SearchRouter({ getConfig: () => cfg, usage, adapters: ADAPTERS, history });
+  const router = new SearchRouter({ getConfig, usage, adapters: ADAPTERS, history });
 
   const month = () => usage.monthKey();
-  const status = () => buildStatus(cfg, usage, ADAPTERS);
+  const status = () => buildStatus(getConfig(), usage, ADAPTERS);
 
   const testEngine = async (id: string, kind: "search" | "fetch", arg: string, signal?: AbortSignal): Promise<TestResult> => {
     const adapter = ADAPTERS.find(a => a.meta.id === id);
@@ -135,7 +137,7 @@ async function main(): Promise<void> {
     "/",
     buildWebApp({
       configPath: store.file,
-      getConfig: () => cfg,
+      getConfig,
       saveConfig: (next) => {
         store.save(next);
         cfg = next;

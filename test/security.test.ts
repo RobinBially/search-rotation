@@ -182,7 +182,7 @@ test('MCP status reports quota period, units, source and estimates', async () =>
         const text = JSON.stringify(result.content);
         assert.match(text,/12\/100 Requests\/Tag.*lokal.*geschätzt.*America\/Los_Angeles/);
         assert.match(text,/2.5\/1000 Credits\/Monat.*remote/);
-        assert.match(text,/IP-basiert.*Kontingent unbekannt/);
+        assert.match(text,/999 erfolgreiche Aufrufe.*lokal.*IP-Limit und Anbieter-Gesamtverbrauch unbekannt/);
         assert.doesNotMatch(text,/999\/3000/);
     } finally { await client.close();await server.close(); }
 });

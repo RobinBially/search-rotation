@@ -14,7 +14,7 @@ function tmpUsage(): UsageStore {
 function cfg(engines: { id: string; enabled: boolean }[]): PolyConfig {
   return {
     version: 1,
-    engines,
+    engines: engines.map(e => ({ ...e, apiKey: "fixture-key" })),
     fetchOrder: [],
     settings: { port: 6277, token: "", monthlyLimits: {} },
   };

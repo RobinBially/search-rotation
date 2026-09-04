@@ -90,6 +90,7 @@ export const DUCKDUCKGO: EngineAdapter = {
     homepage: "https://duckduckgo.com",
     signupUrl: "https://duckduckgo.com",
     keyless: "ip",
+    defaultEnabled: false,
     capabilities: ["search"],
     monthlyFree: 0,
     quota: { period: "ip", unit: "requests", estimated: true },

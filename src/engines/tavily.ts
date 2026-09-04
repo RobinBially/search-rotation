@@ -5,16 +5,16 @@ const SIGNUP = "https://app.tavily.com";
 const BASE = "https://api.tavily.com";
 
 async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOutcome> {
-  if (!ctx.apiKey) throw new NeedsKeyError("tavily", SIGNUP);
   const j = await httpJson<any>(
     `${BASE}/search`,
     {
       method: "POST",
-      headers: { "content-type": "application/json", ...bearer(ctx.apiKey) },
+      headers: { "content-type": "application/json", "X-Client-Name": "search-rotation",
+        ...(ctx.apiKey ? bearer(ctx.apiKey) : { "X-Tavily-Access-Mode": "keyless" }) },
       body: JSON.stringify({
         query: input.query,
         max_results: cap(input.numResults),
-        include_answer: true,
+        ...(ctx.apiKey ? { include_answer: true } : { chunks_per_source: 3 }),
         search_depth: "basic",
       }),
     },
@@ -68,12 +68,13 @@ export const TAVILY: EngineAdapter = {
     label: "Tavily",
     homepage: "https://www.tavily.com",
     signupUrl: SIGNUP,
-    keyless: "no",
+    keyless: "ip",
+    keylessCapabilities: ["search"],
     capabilities: ["search", "fetch"],
     monthlyFree: 1000,
     quota: { period: "month", unit: "credits", limit: 1000, estimated: true, costs: { search: 1, fetch: 0.2 } },
     quotaEndpoint: true,
-    notes: "1.000 Credits/Monat gratis, Reset am Monatsanfang, keine Kreditkarte nötig. Quota per API abrufbar.",
+    notes: "Suche ohne Key im Keyless-Modus; Limit und Gesamtverbrauch unbekannt. Fetch benötigt einen Key. Mit Key ist die Quota per API abrufbar.",
   },
   search,
   fetchUrl,

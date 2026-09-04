@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { PARALLEL } from "../src/engines/parallel.js";
 import { EXA } from "../src/engines/exa.js";
 import { TAVILY } from "../src/engines/tavily.js";
 import { FIRECRAWL } from "../src/engines/firecrawl.js";
@@ -25,9 +26,11 @@ for (const adapter of [TAVILY, FIRECRAWL]) {
   });
 }
 
+for (const provider of [EXA, PARALLEL]) {
 for (const stage of ["initialize", "tools/call"]) {
   for (const kind of ["search", "fetch"] as const) {
-    test(`Exa keyless ${kind}: Abbruch während ${stage} beendet den Transport-Request`, async (t) => {
+    if (provider === PARALLEL && kind === "fetch") continue;
+    test(`${provider.meta.id} keyless ${kind}: Abbruch während ${stage} beendet den Transport-Request`, async (t) => {
       const controller = new AbortController();
       let heldSignal: AbortSignal | undefined | null;
       let announce!: () => void;
@@ -44,8 +47,8 @@ for (const stage of ["initialize", "tools/call"]) {
         return new Response(null, {status:202});
       });
       const operation = kind === "search"
-        ? EXA.search!({query:"test"},{signal:controller.signal})
-        : EXA.fetchUrl!({url:"https://example.com"},{signal:controller.signal});
+        ? provider.search!({query:"test"},{signal:controller.signal})
+        : provider.fetchUrl!({url:"https://example.com"},{signal:controller.signal});
       const rejection = assert.rejects(operation, /request cancelled/i);
       await started;
       controller.abort(new Error("request cancelled"));
@@ -53,6 +56,7 @@ for (const stage of ["initialize", "tools/call"]) {
       assert.equal(heldSignal?.aborted, true);
     });
   }
+}
 }
 
 test("Exa keyless initialisiert bei bereits abgebrochenem Context keine Verbindung", async (t) => {

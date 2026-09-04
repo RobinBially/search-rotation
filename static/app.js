@@ -22,8 +22,8 @@ const state = {
 /* ---------- i18n ---------- */
 
 const I18N = window.I18N;
-let lang = localStorage.getItem("sr_lang") || (navigator.language || "de").slice(0, 2).toLowerCase();
-if (!I18N[lang]) lang = "de";
+let lang = localStorage.getItem("sr_lang") || "en";
+if (!I18N[lang]) lang = "en";
 
 function t(key, vars) {
   let s = (I18N[lang] && I18N[lang][key]) || I18N.de[key] || key;
@@ -36,6 +36,7 @@ function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
   document.querySelectorAll("[data-i18n-title]").forEach((el) => (el.title = t(el.dataset.i18nTitle)));
   $("#lang-code").textContent = lang.toUpperCase();
+  $("#theme-btn").title = t(document.documentElement.dataset.theme === "dark" ? "theme.toLight" : "theme.toDark");
   document.querySelectorAll("#lang-menu [data-lang]").forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
 }
 
@@ -63,7 +64,7 @@ function esc(s) {
   return d.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-const rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
+const rtf = { format: (value, unit) => new Intl.RelativeTimeFormat(lang, { numeric: "auto" }).format(value, unit) };
 
 function relTime(ts) {
   const s = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
@@ -118,15 +119,20 @@ function bar(pct, extraCls) {
   return '<div class="bar"><div class="fill ' + cls + (extraCls ? " " + extraCls : "") + '" style="width:' + Math.max(2, Math.min(100, pct)) + '%"></div></div>';
 }
 
+function unknownQuotaLabel(st, compact = false) {
+  const calls = (st.used?.search || 0) + (st.used?.fetch || 0);
+  return calls + " " + t(compact ? "quota.localShort" : "quota.localCalls") + (compact ? "" : " · " + t("quota.unknown"));
+}
+
 function quotaHtml(st) {
   if (!st || !st.id) return "";
   if (st.quota) {
     const q = st.quota;
     if (q.limit === null || q.used === null) {
-      return '<span class="quota-none">' + esc(t(q.period === "ip" ? "quota.unknown" : "quota.none")) + "</span>";
+      return '<span class="quota-none">' + esc(unknownQuotaLabel(st)) + "</span>";
     }
     const pct = q.limit > 0 ? Math.max(0, Math.round(100 * (q.limit - q.used) / q.limit)) : 100;
-    const label = q.used + " / " + q.limit + " " + t("quota.unit." + q.unit) + " · " + t("quota.period." + q.period) +
+    const label = q.used + " / " + q.limit + " " + t("quota.unit." + q.unit) + " · " + t(q.source === "remote" ? "quota.providerBalance" : "quota.period." + q.period) +
       " · " + t("quota.source." + q.source) + (q.estimated ? " · " + t("quota.estimated") : "");
     return bar(pct) + '<span class="quota-label">' + esc(label) + "</span>";
   }
@@ -318,7 +324,7 @@ function statValues() {
 }
 
 function rotationHtml() {
-  const enabled = sortedEngines().filter((e) => e.enabled);
+  const enabled = sortedEngines().filter((e) => e.enabled && e.capabilities?.includes("search"));
   if (!enabled.length) {
     return '<div class="empty" style="padding:22px"><span class="empty-title">' + esc(t("rotation.empty")) + "</span></div>";
   }
@@ -329,8 +335,8 @@ function rotationHtml() {
         '<span class="rot-pos">' + (e.searchPosition + 1) + "</span>" +
         engineLogoHtml(e) +
         '<span class="rot-name">' + esc(e.label || e.id) + "</span>" +
-        (e.quota?.period === "ip" && e.quota.limit === null
-          ? '<span class="muted">' + esc(t("quota.unknown")) + "</span>"
+        (e.quota?.limit === null
+          ? '<span class="rot-quota" title="' + esc(unknownQuotaLabel(e)) + '">' + esc(unknownQuotaLabel(e, true)) + "</span>"
           : bar(remainingPctOf(e) ?? 100, "accent")) +
         '<svg class="rot-arrow" width="15" height="15"><use href="#i-arrow"/></svg></a>',
     )
@@ -341,9 +347,9 @@ function healthHtml() {
   return sortedEngines()
     .map((e) => {
       const pct = remainingPctOf(e);
-      const unknown = e.quota?.period === "ip" && e.quota.limit === null;
+      const unknown = e.quota?.limit === null;
       const src = e.quota
-        ? unknown ? t("quota.unknown") : t("quota.period." + e.quota.period) + " · " + t("quota.source." + e.quota.source) + (e.quota.estimated ? " · " + t("quota.estimated") : "")
+        ? unknown ? unknownQuotaLabel(e, true) : t(e.quota.source === "remote" ? "quota.providerBalance" : "quota.period." + e.quota.period) + " · " + t("quota.source." + e.quota.source) + (e.quota.estimated ? " · " + t("quota.estimated") : "")
         : e.remote && e.remote.limit ? t("health.source.remote") : e.monthlyLimit > 0 ? t("health.source.local") : t("health.source.none");
       return (
         '<a class="health-card' + (e.enabled ? "" : " off") + '" href="#/engines">' +
@@ -439,6 +445,10 @@ function statCard(stat, icon, label, sub, value) {
 }
 
 function remainingPctOf(st) {
+  if (st.quota) {
+    const q = st.quota;
+    return q.limit > 0 && q.used !== null ? Math.max(0, Math.min(100, Math.round(100 * (q.limit - q.used) / q.limit))) : null;
+  }
   if (st.remoteError) return 0;
   if (st.remote && st.remote.limit) {
     const rem = st.remote.remaining !== undefined ? st.remote.remaining : st.remote.limit - (st.remote.used || 0);
@@ -530,17 +540,17 @@ function renderEngines() {
         )
         .join("");
       return (
-        '<div class="engine-card' + (e.enabled ? "" : " off") + (open ? " open" : "") + '" draggable="true" data-id="' + esc(e.id) + '">' +
+        '<div class="engine-card' + (e.enabled ? "" : " off") + (open ? " open" : "") + '" data-id="' + esc(e.id) + '">' +
         '<div class="engine-head">' +
-        '<span class="handle" title="Drag & Drop"><svg width="16" height="16"><use href="#i-grip"/></svg></span>' +
+        '<span class="handle" draggable="true" title="Drag & Drop"><svg width="16" height="16"><use href="#i-grip"/></svg></span>' +
         '<span class="pos-badge">' + (e.enabled ? e.searchPosition + 1 : "–") + "</span>" +
         engineLogoHtml(e) +
         '<span class="engine-title"><span class="engine-name">' + esc(e.label || e.id) + "</span>" +
         '<span class="engine-badges">' +
-        (e.keyless === "ip" ? '<span class="badge ip">' + esc(t("badge.keyless")) + "</span>" : "") +
+        (!e.hasKey && e.keyless === "ip" ? '<span class="badge ip">' + esc(t("badge.keyless")) + "</span>" : "") +
         (e.quotaEndpoint ? '<span class="badge quota">' + esc(t("badge.quota")) + "</span>" : "") +
         "</span></span>" +
-        '<label class="switch"><input type="checkbox" data-act="toggle"' + (e.enabled ? " checked" : "") + '><span class="track-el"></span></label>' +
+        '<label class="switch"><input type="checkbox" aria-label="' + esc(e.label || e.id) + '" data-act="toggle"' + (e.enabled ? " checked" : "") + '><span class="track-el"></span></label>' +
         '<span class="engine-quota" data-quota="' + esc(e.id) + '">' + quotaHtml(e) + "</span>" +
         '<button class="drawer-toggle" data-act="drawer" aria-expanded="' + open + '" title="' + esc(open ? t("engines.collapse") : t("engines.config")) + '"><svg width="17" height="17"><use href="#i-chevron"/></svg></button>' +
         "</div>" +
@@ -705,6 +715,10 @@ function engineDropdownHtml(selected) {
   );
 }
 
+function historyEmptyHtml() {
+  return '<div class="empty"><span class="empty-title">' + esc(t("history.empty")) + "</span></div>";
+}
+
 function renderHistory() {
   const f = state.filters;
   const entries = filteredHistory();
@@ -727,10 +741,7 @@ function renderHistory() {
     '<button class="btn btn-danger" data-act="hist-clear"><svg width="13" height="13"><use href="#i-trash"/></svg> ' + esc(t("history.clear")) + "</button>" +
     "</div>" +
     '<p class="hist-summary">' + esc(t("hist.shown", { n: entries.length, f: fails })) + "</p>" +
-    (entries.length
-      ? '<div class="hist-list">' + histListHtml(entries) + "</div>"
-      : '<div class="panel"><div class="empty"><span class="empty-icon"><svg width="24" height="24"><use href="#i-clock"/></svg></span>' +
-        '<span class="empty-title">' + esc(t("history.empty")) + '</span><span class="empty-hint">' + esc(t("history.emptyHint")) + "</span></div></div>") +
+    '<div class="hist-list">' + (entries.length ? histListHtml(entries) : historyEmptyHtml()) + "</div>" +
     "</div>";
 
   bindHistToggles();
@@ -774,7 +785,7 @@ function updateHistory() {
   const fails = entries.filter((e) => !e.ok).length;
   const summary = root.querySelector(".hist-summary");
   if (summary) summary.textContent = t("hist.shown", { n: entries.length, f: fails });
-  list.innerHTML = histListHtml(entries);
+  list.innerHTML = entries.length ? histListHtml(entries) : historyEmptyHtml();
   bindHistToggles();
 }
 
@@ -785,7 +796,7 @@ function segBtn(kind, label) {
 /* ---------- Drag & Drop (delegiert, einmalig) ---------- */
 
 document.addEventListener("dragstart", (ev) => {
-  const card = ev.target.closest?.("[draggable]");
+  const card = ev.target.closest?.(".engine-card");
   if (!card) return;
   if (!ev.target.closest(".handle")) {
     // Drag nur am Griff starten — Inputs/Buttons bleiben normal nutzbar
@@ -801,13 +812,13 @@ document.addEventListener("dragstart", (ev) => {
 });
 
 document.addEventListener("dragend", (ev) => {
-  const card = ev.target.closest?.("[draggable]");
+  const card = ev.target.closest?.(".engine-card");
   if (card) card.classList.remove("dragging");
   document.querySelectorAll(".drag-over").forEach((x) => x.classList.remove("drag-over"));
 });
 
 document.addEventListener("dragover", (ev) => {
-  const card = ev.target.closest?.("[draggable]");
+  const card = ev.target.closest?.(".engine-card");
   if (!card || !state.dragFrom) return;
   ev.preventDefault();
   document.querySelectorAll(".drag-over").forEach((x) => x.classList.remove("drag-over"));
@@ -815,7 +826,7 @@ document.addEventListener("dragover", (ev) => {
 });
 
 document.addEventListener("drop", (ev) => {
-  const toEl = ev.target.closest?.("[draggable]");
+  const toEl = ev.target.closest?.(".engine-card");
   const from = state.dragFrom;
   state.dragFrom = null;
   document.querySelectorAll(".drag-over").forEach((x) => x.classList.remove("drag-over"));
@@ -978,6 +989,7 @@ langMenu.addEventListener("click", (ev) => {
   langMenu.hidden = true;
   langBtn.setAttribute("aria-expanded", "false");
   applyI18n();
+  setTheme(document.documentElement.dataset.theme, false);
   render();
   if (state.route === "/history" || state.route === "/") loadHistory().then(render).catch(() => {});
 });

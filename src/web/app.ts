@@ -93,6 +93,7 @@ export function buildWebApp(deps: WebDeps) {
                 : prev?.apiKey,
         };
         const meta = known.get(e.id)!.meta;
+        if (meta.keyless === "no" && !next.apiKey) next.enabled = false;
         if (meta.extraFields?.length) {
           const extra: Record<string, string> = { ...(prev?.extra ?? {}) };
           for (const f of meta.extraFields) {
@@ -107,7 +108,7 @@ export function buildWebApp(deps: WebDeps) {
     for (const a of deps.adapters) {
       if (!merged.some((m) => m.id === a.meta.id)) {
         const prev = cfg.engines.find((x) => x.id === a.meta.id);
-        merged.push(prev ?? { id: a.meta.id, enabled: a.meta.defaultEnabled ?? true });
+        merged.push(prev ?? { id: a.meta.id, enabled: a.meta.defaultEnabled ?? a.meta.keyless === "ip" });
       }
     }
 

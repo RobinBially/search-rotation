@@ -1,30 +1,31 @@
-## v0.3.0 — verlässliche Rotation und GitHub-Releases
+## v0.3.1 — Keyless search and dashboard fixes
 
-Dieses Release korrigiert die Kontingent-Priorisierung und macht parallele MCP-Instanzen, den Token-Betrieb und die Fehlerbehandlung robuster.
+Tavily and Parallel now work without API keys for web search. Quota displays distinguish locally counted calls from provider balances, and dashboard layout and drag-and-drop bugs are fixed.
 
-### Neu
+### Added
 
-- Getrennte Such-/Fetch-Rotation, Cooldowns mit `Retry-After` und Gesamtzeitlimit mit Abbruchweitergabe.
-- Optionaler strikter Gratis-Modus mit Reservierung laufender Einheiten innerhalb eines Routers.
-- Tages-/Monats-/Credit-/IP-Kontingente mit sichtbarer Quelle und Schätzstatus.
-- GitHub Actions für Tests unter Node 20/22/24 sowie GitHub-Releases mit fertigem Paket und SHA-256-Prüfsumme. Kein npm-Konto nötig.
+- Tavily keyless search via its anonymous-access header, using our own client identity.
+- Parallel keyless search through its hosted MCP endpoint, with cancellation and normalized results.
+- Search-only capability reporting for anonymous Tavily/Parallel access. Fetch uses their direct APIs when a key is configured.
+- Engine configuration reloads across harness processes sharing the same configuration directory.
 
-### Behoben
+### Fixed
 
-- Erschöpfte Engines umgehen nicht mehr die Quota-Priorität.
-- Prozessübergreifende Sperren verhindern verlorene Verbrauchszähler und Verlaufseinträge.
-- Dashboard-Login mit Session-Cookie; keine langlebigen Tokens in URLs oder Logs. Host-/Origin-Schutz für die HTTP-Schnittstellen.
-- Korrekte DDG-Snippets, zuverlässiges Drag-and-drop und getrennte Search-/Fetch-Tests im Dashboard.
-- Alle Regressionstests sind Teil des Standard-Testlaufs; keine übersprungenen Bugtests.
+- Unknown quotas show local successful calls without invented caps or misleading 100% progress rings. Removed Exa's assumed 1,400-request allowance.
+- Firecrawl's key badge reflects the configured credentials; remote balances are labeled as account balances rather than calendar-month quotas.
+- Key-required engines without credentials are disabled. DuckDuckGo HTML is now opt-in.
+- Responsive quota layouts, native drag-and-drop, readable disabled-engine forms, history empty states, and language/theme labels.
+- English is now the default UI language; saved language preferences are preserved.
+- Updated English README, actual dashboard screenshot, provider-access documentation and multi-harness/update guidance.
 
-### Installation
+### Install or update
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.0
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.1
 ```
 
-Alternativ das fertig gebaute `search-rotation-0.3.0.tgz` aus diesem Release installieren. npm/npx dienen nur als Paketwerkzeuge; ein npm-Account und npm-Publish sind nicht erforderlich.
+Alternatively, install the prebuilt `search-rotation-0.3.1.tgz` asset. The release includes `SHA256SUMS`. Distribution is through GitHub; no npm account is required.
 
-### Update-Hinweise
+Reconnect the MCP server in each harness after updating. Existing processes keep running their previous code. Saved credentials and history are retained; explicitly disabled engines stay disabled, so enable Tavily/Parallel in the dashboard if an older configuration disabled them.
 
-Vorhandene Config- und Verlaufsdateien bleiben erhalten. Alte Serverprozesse vor dem Update beenden, damit alle Instanzen die neuen Dateisperren verwenden. Im Token-Betrieb erfolgt die Browser-Anmeldung nun über `/login`; `?token=…` entfällt. Token- und Portänderungen erfordern einen Neustart. Details und Grenzen des Gratis-Modus stehen in der README und in `docs/operations.md`.
+Validation: 174 automated tests, package installation/MCP handshake, live anonymous searches through both new adapters, and browser checks of dashboard interactions on desktop, tablet and mobile. Local page extraction is not included in this release.

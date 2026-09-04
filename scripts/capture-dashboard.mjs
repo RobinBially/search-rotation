@@ -16,22 +16,22 @@ const counts = { tavily: [248, 21, 252.2], firecrawl: [186, 32, 404], parallel: 
 const config = normalizeConfig({}, { knownIds: KNOWN_IDS, searchOrder: SEARCH_ORDER, fetchOrder: FETCH_ORDER, defaultEnabled: DEFAULT_ENABLED });
 for (const engine of config.engines) {
   // Deliberately nonfunctional fixture values, never used for outbound requests.
-  if (['tavily', 'firecrawl', 'parallel', 'exa'].includes(engine.id)) engine.apiKey = 'demo-not-a-real-api-key';
+  if (['firecrawl'].includes(engine.id)) engine.apiKey = 'demo-not-a-real-api-key';
 }
 const rows = ADAPTERS.map(adapter => {
   const meta = adapter.meta, e = config.engines.find(e => e.id === meta.id);
   const [search, fetch, consumed] = counts[meta.id];
-  const ip = ['jina', 'duckduckgo'].includes(meta.id);
-  const remote = ['tavily', 'firecrawl'].includes(meta.id);
-  const limit = ip ? null : meta.quota?.limit ?? meta.monthlyFree;
-  const used = meta.quota?.unit === 'credits' ? consumed : search + fetch;
+  const ip = meta.keyless === 'ip' && !e.apiKey;
+  const remote = meta.id === 'firecrawl';
+  const limit = !e.apiKey ? null : (meta.quota?.limit ?? meta.monthlyFree) || null;
+  const used = !ip && meta.quota?.unit === 'credits' ? consumed : search + fetch;
   return { ...meta, enabled: e.enabled, hasKey: Boolean(e.apiKey), keyMasked: e.apiKey ? 'demo…only' : '', extrasSet: {},
     searchPosition: KNOWN_IDS.indexOf(meta.id), fetchPosition: FETCH_ORDER.indexOf(meta.id),
-    monthlyLimit: meta.monthlyFree, used: {search, fetch, errors: 0, consumed},
+    monthlyLimit: ip ? 0 : meta.monthlyFree, used: {search, fetch, errors: 0, consumed},
     remote: remote ? {limit, used, remaining: limit - used} : null,
     remainingPct: limit === null ? null : (limit - used) / limit,
-    quota: { period: ip ? 'ip' : meta.quota?.period ?? 'month', unit: meta.quota?.unit ?? 'requests', limit, used: ip ? null : used,
-      source: remote ? 'remote' : ip ? 'unknown' : 'local', estimated: !remote } };
+    quota: { period: ip ? 'ip' : meta.quota?.period ?? 'month', unit: ip ? 'requests' : meta.quota?.unit ?? 'requests', limit, used,
+      source: remote ? 'remote' : 'local', estimated: false } };
 });
 const samples = [
   ['search', 'TypeScript 5.9 release notes', 'tavily', 846],
@@ -58,6 +58,7 @@ try {
   const errors=[]; page.on('pageerror',error=>errors.push(error.message));
   await page.goto(origin, {waitUntil:'networkidle'});
   await page.locator('.recent-row').first().waitFor();
+  if (await page.locator('html').getAttribute('lang') !== 'en') throw new Error('Screenshot must be in English');
   await page.locator('.logo-wrap img').evaluateAll(images => Promise.all(images.map(image => image.complete ? undefined : new Promise(resolve => {image.onload=resolve;image.onerror=resolve;}))));
   const content = await page.locator('.page').boundingBox();
   const overview = await page.locator('.two-col').boundingBox();

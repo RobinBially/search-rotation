@@ -12,13 +12,13 @@ Rotate across available quotas, automatically fail over when a provider is unava
 Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.0
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.1
 ```
 
 To preview the dashboard:
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.0 --http --open
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.1 --http --open
 ```
 
 Add your provider keys in the dashboard, then connect your assistant using the **[MCP client setup guide](docs/clients.md)** for Codex, Claude, Cursor, or OpenCode.
@@ -30,7 +30,7 @@ Add your provider keys in the dashboard, then connect your assistant using the *
 - **Local dashboard:** API keys, drag-and-drop engine order, quota status, and request history.
 - **Local or remote:** MCP over stdio or authenticated Streamable HTTP.
 
-**Providers:** Tavily · Firecrawl · Parallel · Exa · Google PSE · Jina Reader · DuckDuckGo HTML. Some support keyless access; capabilities and quotas vary by provider.
+**Providers:** Tavily · Firecrawl · Parallel · Exa · Google PSE · Jina Reader · DuckDuckGo HTML. [Keyless access and quota accounting](docs/provider-access.md) vary by provider.
 
 **MCP tools:** `web_search` · `fetch_url` · `engine_status` · `open_dashboard`.
 

@@ -1,12 +1,19 @@
 import type { EngineAdapter, EngineContext, FetchInput, SearchInput, SearchOutcome } from "../types.js";
 import { cap, httpJson, NeedsKeyError } from "./base.js";
 
+import { withHostedMcp } from "./hosted-mcp.js";
+
 const SIGNUP = "https://platform.parallel.ai";
 const BASE = "https://api.parallel.ai/v1";
 
 async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOutcome> {
-  if (!ctx.apiKey) throw new NeedsKeyError("parallel", SIGNUP);
-  const j = await httpJson<any>(
+  const j = !ctx.apiKey ? await withHostedMcp("https://search.parallel.ai/mcp", ctx, 30_000, async (client, signal) => {
+    const result = await client.callTool({ name: "web_search", arguments: { objective: input.query, search_queries: [input.query] } }, undefined, { timeout: 30_000, signal });
+    if (result.isError) throw new Error("parallel-mcp: " + (result.content as any[]).filter(c => c.type === "text").map(c => c.text).join("\n").slice(0, 300));
+    const data = result.structuredContent as { results?: unknown[] } | undefined;
+    if (!Array.isArray(data?.results)) throw new Error("parallel-mcp: invalid search response");
+    return data;
+  }) : await httpJson<any>(
     `${BASE}/search`,
     {
       method: "POST",
@@ -21,7 +28,7 @@ async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOut
     },
     { signal: ctx.signal },
   );
-  const items = (Array.isArray(j?.results) ? j.results : []).map((r: any) => ({
+  const items = (Array.isArray(j?.results) ? j.results : []).slice(0, cap(input.numResults)).map((r: any) => ({
     title: r?.title || r?.url || "(ohne Titel)",
     url: String(r?.url ?? ""),
     snippet: Array.isArray(r?.excerpts) ? r.excerpts.join(" … ").slice(0, 600) : undefined,
@@ -66,13 +73,14 @@ export const PARALLEL: EngineAdapter = {
     label: "Parallel",
     homepage: "https://parallel.ai",
     signupUrl: SIGNUP,
-    keyless: "no",
+    keyless: "ip",
+    keylessCapabilities: ["search"],
     capabilities: ["search", "fetch"],
     monthlyFree: 5000,
     quota: { period: "month", unit: "requests", limit: 5000, estimated: true },
     quotaEndpoint: false,
     notes:
-      "5.000 Requests/Monat gratis + zusätzlich $5 Guthaben/Monat. Kein Quota-Endpunkt — Zähler läuft lokal, Kontrollblick im Parallel-Dashboard.",
+      "Suche ohne Key über gehosteten Parallel-MCP. Fetch nutzt die direkte API mit Key. Ohne Key werden nur lokale Aufrufe gezählt; Anbieterlimit und Gesamtverbrauch unbekannt.",
   },
   search,
   fetchUrl,

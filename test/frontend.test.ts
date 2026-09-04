@@ -4,14 +4,14 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync(new URL("../static/app.js", import.meta.url), "utf8");
-function harness() {
+function harness(savedLanguage: string | null = null) {
   const listeners = new Map<string, Function[]>();
   const output = { innerHTML: "" };
   const view = { innerHTML: "", querySelectorAll: () => [], querySelector: () => null };
   const context = vm.createContext({
     URLSearchParams, Intl, URL, Map, Set, Promise, console,
-    window: { I18N: { de: {} } }, navigator: { language: "de" },
-    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    window: { I18N: { de: {}, en: {} } }, navigator: { language: "de" },
+    localStorage: { getItem: (key: string) => key === "sr_lang" ? savedLanguage : null, setItem() {}, removeItem() {} },
     location: { search: "", pathname: "/", hash: "", origin: "http://localhost" }, history: { replaceState() {} },
     setTimeout: () => 0, clearTimeout() {}, requestAnimationFrame() {}, CSS: { escape: (s: string) => s },
     document: {
@@ -100,4 +100,36 @@ test("Settings speichern Strict-Free und Gesamttimeout ohne andere Engine-Änder
   assert.equal(sent[0]?.settings.strictFreeMode, true);
   assert.equal(sent[0]?.settings.requestTimeoutMs, 45000);
   assert.deepEqual(sent[0].engines.map((e:any)=>e.id), ["a","b"]);
+});
+
+test('Unknown quotas show successful local calls and never a full bar or infinity', () => {
+  const h = harness();
+  h.run('state.status=[{id:"exa",label:"Exa",enabled:true,capabilities:["search"],searchPosition:0,used:{search:7,fetch:5},remainingPct:null,quota:{period:"ip",unit:"requests",source:"local",used:12,limit:null}}]');
+  const quota = h.run('quotaHtml(state.status[0])');
+  assert.match(quota, /12/); assert.match(quota, /quota.localCalls/);
+  assert.doesNotMatch(quota, /class="bar"|1400|∞/);
+  assert.doesNotMatch(h.run('rotationHtml()'), /class="bar"/);
+  assert.match(h.run('healthHtml()'), /12/);
+});
+
+test('Provider key badge reflects configured credentials and quota rings use canonical quota', () => {
+  const h = harness();
+  h.run('state.status=[{id:"firecrawl",label:"Firecrawl",enabled:true,hasKey:true,keyless:"ip",capabilities:[],quota:{limit:1000,used:179},used:{search:1,fetch:0}}]');
+  h.run('renderEngines()');
+  assert.doesNotMatch(h.view.innerHTML, /badge.keyless/);
+  assert.equal(h.run('remainingPctOf({monthlyLimit:1400,quota:{limit:null,used:12}})'), null);
+  assert.equal(h.run('remainingPctOf({monthlyLimit:3000,quota:{limit:100,used:50}})'), 50);
+});
+
+test('Only drag handles are draggable so native dragstart targets the handle', () => {
+  const h = harness();
+  h.run('state.status=[{id:"exa",label:"Exa",enabled:true,searchPosition:0}];renderEngines()');
+  assert.match(h.view.innerHTML, /class="handle"[^>]*draggable="true"/);
+  assert.doesNotMatch(h.view.innerHTML, /class="engine-card[^>]*draggable="true"/);
+});
+
+ test('Fresh installations use English regardless of browser language; saved preferences persist', () => {
+  assert.equal(harness().run('lang'), 'en');
+  assert.equal(harness('de').run('lang'), 'de');
+  assert.equal(harness('unsupported').run('lang'), 'en');
 });

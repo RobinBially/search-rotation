@@ -26,7 +26,7 @@ export const GOOGLE_CSE: EngineAdapter = {
   meta: {
     id: "google-cse",
     label: "Google PSE",
-    homepage: "https://programmablesearchengine.google.com",
+    homepage: "https://www.google.com",
     signupUrl: SIGNUP,
     keyless: "no",
     capabilities: ["search"],
@@ -34,7 +34,7 @@ export const GOOGLE_CSE: EngineAdapter = {
     quota: { period: "day", unit: "requests", limit: 100, timeZone: "America/Los_Angeles", estimated: false },
     quotaEndpoint: false,
     notes:
-      "100 Queries/Tag gratis (= ~3.000/Monat) — das größte Einzelkontingent. Braucht API-Key plus Search Engine ID (CX). Standardmäßig deaktiviert.",
+      "Für bestehende Kunden: 100 Queries pro Pacific-Tag. API-Key und Search Engine ID (CX) erforderlich. Für Neukunden geschlossen; Abschaltung am 1. Januar 2027.",
     extraFields: [{ key: "cx", label: "Search Engine ID (CX)" }],
     defaultEnabled: false,
   },

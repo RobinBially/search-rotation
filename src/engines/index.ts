@@ -16,6 +16,6 @@ export const SEARCH_ORDER = ["tavily", "firecrawl", "parallel", "exa", "google-c
 
 export const FETCH_ORDER = ["jina", "firecrawl", "parallel", "tavily", "exa"];
 
-export const DEFAULT_ENABLED: Record<string, boolean> = {
-  "google-cse": false,
-};
+export const DEFAULT_ENABLED: Record<string, boolean> = Object.fromEntries(
+  ADAPTERS.map(a => [a.meta.id, a.meta.defaultEnabled ?? a.meta.keyless === "ip"]),
+);

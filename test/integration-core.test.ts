@@ -44,7 +44,7 @@ function cfg(
 ): PolyConfig {
   return {
     version: 1,
-    engines: engines.map((e) => (typeof e === "string" ? { id: e, enabled: true } : e)),
+    engines: engines.map((e) => (typeof e === "string" ? { id: e, enabled: true, apiKey: "fixture-key" } : e)),
     fetchOrder: opts.fetchOrder ?? [],
     settings: { port: 6277, token: "", monthlyLimits: opts.monthlyLimits ?? {} },
   };

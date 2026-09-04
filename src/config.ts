@@ -38,6 +38,7 @@ export interface ConfigDefaults {
   searchOrder: string[];
   fetchOrder: string[];
   defaultEnabled: Record<string, boolean>;
+  requiredKeyIds?: string[];
 }
 
 export function normalizeConfig(raw: unknown, d: ConfigDefaults): PolyConfig {
@@ -81,6 +82,9 @@ export function normalizeConfig(raw: unknown, d: ConfigDefaults): PolyConfig {
     seen.add(e.id);
     return true;
   });
+  for (const engine of engines) {
+    if (d.requiredKeyIds?.includes(engine.id) && !engine.apiKey) engine.enabled = false;
+  }
   const s = (raw as any)?.settings ?? {};
   const rawLimits =
     s.monthlyLimits && typeof s.monthlyLimits === "object" && !Array.isArray(s.monthlyLimits)

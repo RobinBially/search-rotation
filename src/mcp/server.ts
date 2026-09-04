@@ -98,7 +98,7 @@ export function buildMcpServer(deps: McpDeps): McpServer {
           const source = q.source === "local" ? "lokal" : q.source === "remote" ? "remote" : "Quelle unbekannt";
           const details = [source, ...(q.estimated ? ["geschätzt"] : []), ...(q.timeZone ? [q.timeZone] : [])].join(", ");
           quota = q.period === "ip"
-            ? `IP-basiert: Kontingent unbekannt (${details})`
+            ? `${row.used.search + row.used.fetch} erfolgreiche Aufrufe/Monat (lokal); IP-Limit und Anbieter-Gesamtverbrauch unbekannt`
             : `${q.used ?? "?"}/${q.limit ?? "unbekannt"} ${unit}/${period} (${details})`;
         } else if (row.remote?.limit) {
           quota = `remote: ${row.remote.used ?? "?"}/${row.remote.limit}`;

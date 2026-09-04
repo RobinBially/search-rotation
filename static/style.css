@@ -403,7 +403,7 @@ body[data-booted] .brand-mark { animation: spin 14s linear infinite; }
 
 .two-col {
   display: grid;
-  grid-template-columns: 5fr 7fr;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: 14px;
   margin-bottom: 18px;
   align-items: start;
@@ -475,7 +475,7 @@ body[data-booted] .brand-mark { animation: spin 14s linear infinite; }
 }
 
 .health-card:hover { transform: translateY(-1px); border-color: var(--border-strong); }
-.health-card.off { opacity: 0.45; }
+.health-card.off { opacity: 0.75; }
 
 .gauge { flex: none; position: relative; width: 52px; height: 52px; }
 .gauge svg { display: block; transform: rotate(-90deg); }
@@ -640,7 +640,7 @@ input::placeholder { color: var(--faint); }
   transition: border-color var(--speed), opacity var(--speed), transform var(--speed), box-shadow var(--speed);
 }
 
-.engine-card.off { opacity: 0.55; }
+.engine-card.off { border-style: dashed; }
 
 .engine-card.dragging {
   opacity: 0.35;
@@ -1133,8 +1133,8 @@ a.signup:hover { text-decoration: underline; }
 /* ================= Responsive ================= */
 
 @media (max-width: 900px) {
-  .overview-grid { grid-template-columns: repeat(2, 1fr); }
-  .two-col { grid-template-columns: 1fr; }
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .two-col { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 720px) {
@@ -1177,3 +1177,24 @@ a.signup:hover { text-decoration: underline; }
 .settings-panel p { max-width: 80ch; line-height: 1.5; }
 .settings-check { display: flex; align-items: center; gap: 8px; }
 .settings-panel input[type="number"] { width: 125px; margin: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+
+/* Quota explanations must fit cards at every viewport. */
+.rot-quota { flex: 1; min-width: 0; font-size: 11.5px; color: var(--muted); text-align: right; }
+.engine-quota { flex-direction: column; align-items: stretch; gap: 5px; }
+.engine-quota .bar { flex: none; width: 100%; }
+.quota-label, .quota-none { white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
+@media (max-width: 720px) {
+  .engine-head { flex-wrap: wrap; gap: 10px; }
+  .engine-quota { order: 2; flex: 1 0 100%; margin: 0; }
+  .engine-title { min-width: 0; flex: 1; }
+  .engine-head .drawer-toggle { margin-left: auto; }
+  .drawer-row { flex-wrap: wrap; }
+  .drawer-row input { min-width: 0; flex-basis: 100%; }
+  .nav-tab .nav-label { display: inline; }
+  .rot-name { flex: 1; min-width: 0; }
+  .rot-quota { flex: none; }
+}
+
+.two-col > .panel, .health-card { min-width: 0; }
+.panel-head { flex-wrap: wrap; }
+@media(max-width:480px) { .health-grid { grid-template-columns: minmax(0, 1fr); } .btn, .drawer-toggle, .nav-tab, .icon-btn { min-height: 44px; } }

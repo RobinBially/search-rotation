@@ -76,7 +76,7 @@ export const FIRECRAWL: EngineAdapter = {
     quota: { period: "month", unit: "credits", limit: 1000, estimated: true, costs: { search: 2, fetch: 1 } },
     quotaEndpoint: true,
     notes:
-      "1.000 Credits/Monat gratis (mit Konto). Quota per API abrufbar; Reset nach Billing-Periode (Kontostand zählt Remote), nicht am Kalendermonat. Ohne Key nur wenige IP-basierte Requests.",
+      "Gratis-Guthaben mit Konto; kein garantierter monatlicher Reset. Quota per API abrufbar; Reset nach Billing-Periode (Kontostand zählt Remote), nicht am Kalendermonat. Ohne Key nur wenige IP-basierte Requests.",
   },
   estimateCost: (kind, input) => kind === "search" ? 2 * Math.ceil(cap((input as SearchInput).numResults) / 10) : 1,
   search,

@@ -54,6 +54,7 @@ export class SearchRouter {
     for (const id of new Set(order)) {
       const adapter = byId.get(id); const e = cfg.engines.find(e => e.id === id);
       if (!adapter || !e || (!onlyEngine && !e.enabled) || !(kind === 'search' ? adapter.search : adapter.fetchUrl)) continue;
+      if (!onlyEngine && !e.apiKey && adapter.meta.keylessCapabilities && !adapter.meta.keylessCapabilities.includes(kind)) continue;
       const c = { adapter, ctx: { apiKey: e.apiKey, extra: e.extra, signal } };
       if (this.state(c).until > this.now()) continue;
       entries.push(c);

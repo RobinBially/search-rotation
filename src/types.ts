@@ -52,6 +52,8 @@ export interface EngineMeta {
   /** "no" = Key erforderlich, "ip" = ohne Key IP-basiert nutzbar (kleines Limit) */
   keyless: "no" | "ip";
   capabilities: Capability[];
+  /** Capabilities available without credentials; omitted means all. */
+  keylessCapabilities?: Capability[];
   /** Typisches Gratis-Monatskontingent für die lokale Zählung; 0 = kein festes Limit */
   monthlyFree: number;
   quota?: QuotaPolicy;
