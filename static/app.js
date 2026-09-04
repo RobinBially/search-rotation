@@ -674,14 +674,35 @@ function bindHistToggles() {
   });
 }
 
+/** Engine-Filter als Custom-Dropdown — native <select>-Popups folgen nicht dem
+ *  Seiten-Theme (helle System-Popups mit heller Schrift = unlesbar im Dark). */
+function engineDropdownHtml(selected) {
+  const engines = sortedEngines();
+  const cur = engines.find((e) => e.id === selected);
+  const label = selected && cur ? cur.label || cur.id : t("hist.filter.all");
+  const items =
+    '<button role="menuitem" data-engine="" class="' + (!selected ? "active" : "") + '">' + esc(t("hist.filter.all")) +
+    '<svg class="mi-check" width="14" height="14"><use href="#i-check"/></svg></button>' +
+    engines
+      .map(
+        (e) =>
+          '<button role="menuitem" data-engine="' + esc(e.id) + '" class="' + (selected === e.id ? "active" : "") + '">' +
+          esc(e.label || e.id) + '<svg class="mi-check" width="14" height="14"><use href="#i-check"/></svg></button>',
+      )
+      .join("");
+  return (
+    '<div class="dropdown" id="engine-dd">' +
+    '<button class="btn" id="engine-dd-btn" aria-haspopup="menu" aria-expanded="false">' +
+    '<svg width="13" height="13"><use href="#i-stack"/></svg><span id="engine-dd-label">' + esc(label) + "</span>" +
+    '<svg class="chev" width="13" height="13"><use href="#i-chevron"/></svg></button>' +
+    '<div class="menu menu-left" id="engine-dd-menu" role="menu" hidden>' + items + "</div></div>"
+  );
+}
+
 function renderHistory() {
   const f = state.filters;
   const entries = filteredHistory();
   const fails = entries.filter((e) => !e.ok).length;
-
-  const engineOptions = sortedEngines()
-    .map((e) => '<option value="' + esc(e.id) + '"' + (f.engine === e.id ? " selected" : "") + ">" + esc(e.label || e.id) + "</option>")
-    .join("");
 
   $("#view").innerHTML =
     '<div class="page">' +
@@ -692,7 +713,7 @@ function renderHistory() {
     segBtn("search", t("hist.filter.search")) +
     segBtn("fetch", t("hist.filter.fetch")) +
     "</div>" +
-    '<select id="hist-engine"><option value="">' + esc(t("hist.filter.all")) + "</option>" + engineOptions + "</select>" +
+    engineDropdownHtml(f.engine) +
     '<input type="text" id="hist-q" placeholder="' + esc(t("hist.search.ph")) + '" value="' + esc(f.q) + '">' +
     '<span class="spacer"></span>' +
     '<span class="live-dot' + (state.livePaused ? " paused" : "") + '" id="live-dot"><span class="pulse"></span></span>' +
@@ -714,9 +735,23 @@ function renderHistory() {
     clearTimeout(qInput.__t);
     qInput.__t = setTimeout(updateHistory, 220);
   });
-  $("#hist-engine").addEventListener("change", (ev) => {
-    state.filters.engine = ev.target.value;
-    renderHistory();
+
+  const ddBtn = $("#engine-dd-btn");
+  const ddMenu = $("#engine-dd-menu");
+  ddBtn.addEventListener("click", () => {
+    const open = !ddMenu.hidden;
+    ddMenu.hidden = open;
+    ddBtn.setAttribute("aria-expanded", String(!open));
+  });
+  ddMenu.addEventListener("click", (ev) => {
+    const item = ev.target.closest("[data-engine]");
+    if (!item) return;
+    state.filters.engine = item.dataset.engine;
+    $("#engine-dd-label").textContent = item.textContent.trim();
+    ddMenu.hidden = true;
+    ddBtn.setAttribute("aria-expanded", "false");
+    ddMenu.querySelectorAll("[data-engine]").forEach((b) => b.classList.toggle("active", b.dataset.engine === state.filters.engine));
+    updateHistory();
   });
 }
 
@@ -935,12 +970,23 @@ document.addEventListener("click", (ev) => {
     langMenu.hidden = true;
     langBtn.setAttribute("aria-expanded", "false");
   }
+  const engMenu = $("#engine-dd-menu");
+  if (engMenu && !engMenu.hidden && !ev.target.closest("#engine-dd")) {
+    engMenu.hidden = true;
+    $("#engine-dd-btn")?.setAttribute("aria-expanded", "false");
+  }
 });
 
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape" && !langMenu.hidden) {
+  if (ev.key !== "Escape") return;
+  if (!langMenu.hidden) {
     langMenu.hidden = true;
     langBtn.setAttribute("aria-expanded", "false");
+  }
+  const engMenu = $("#engine-dd-menu");
+  if (engMenu && !engMenu.hidden) {
+    engMenu.hidden = true;
+    $("#engine-dd-btn")?.setAttribute("aria-expanded", "false");
   }
 });
 
