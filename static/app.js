@@ -93,6 +93,22 @@ function avatarStyle(id) {
   return "background:linear-gradient(135deg,hsl(" + h + " 62% 52%),hsl(" + ((h + 28) % 360) + " 68% 40%))";
 }
 
+/** Offizielles Favicon (aus der Homepage-URL); bei Load-Fehler ersetzt der delegierte
+ *  error-Handler es durch den farbigen Buchstaben-Avatar. */
+function engineLogoHtml(e) {
+  let domain = "";
+  try {
+    domain = new URL(e.homepage || "").hostname;
+  } catch {}
+  const letter = esc((e.label || e.id)[0]);
+  if (!domain) return '<span class="avatar" style="' + avatarStyle(e.id) + '">' + letter + "</span>";
+  return (
+    '<span class="logo-wrap"><img class="logo" src="https://www.google.com/s2/favicons?domain=' +
+    encodeURIComponent(domain) +
+    '&sz=64" alt="" referrerpolicy="no-referrer" loading="lazy" data-fallback="' + letter + '" data-hue="' + engineHue(e.id) + '"></span>'
+  );
+}
+
 function pctClass(pct) {
   return pct > 40 ? "ok" : pct > 10 ? "warn" : "crit";
 }
@@ -286,9 +302,8 @@ function renderSkeleton() {
 
 /* ---------- View: Übersicht ---------- */
 
-function renderOverview() {
-  const engines = sortedEngines();
-  const enabled = engines.filter((e) => e.enabled);
+function statValues() {
+  const engines = state.status;
   const searches = engines.reduce((n, e) => n + (e.used?.search || 0), 0);
   const fetches = engines.reduce((n, e) => n + (e.used?.fetch || 0), 0);
   const h = state.history;
@@ -296,66 +311,77 @@ function renderOverview() {
   const errRate = h.length ? Math.round((100 * fails) / h.length) : 0;
   const okDurs = h.filter((e) => e.ok).map((e) => e.ms);
   const avg = okDurs.length ? okDurs.reduce((a, b) => a + b, 0) / okDurs.length : 0;
+  return { searches, fetches, errRate: errRate + "%", avg: avg ? fmtMs(avg) : "–" };
+}
 
-  const rotation =
-    enabled.length
-      ? enabled
-          .map(
-            (e) =>
-              '<a class="rot-row" href="#/engines" data-focus-engine="' + esc(e.id) + '">' +
-              '<span class="rot-pos">' + (e.searchPosition + 1) + "</span>" +
-              '<span class="avatar" style="width:26px;height:26px;font-size:12px;border-radius:8px;' + avatarStyle(e.id) + '">' + esc((e.label || e.id)[0]) + "</span>" +
-              '<span class="rot-name">' + esc(e.label || e.id) + "</span>" +
-              bar(remainingPctOf(e) ?? 100, "accent") +
-              '<svg class="rot-arrow" width="15" height="15"><use href="#i-arrow"/></svg></a>',
-          )
-          .join("")
-      : '<div class="empty" style="padding:22px"><span class="empty-title">' + esc(t("rotation.empty")) + "</span></div>";
+function rotationHtml() {
+  const enabled = sortedEngines().filter((e) => e.enabled);
+  if (!enabled.length) {
+    return '<div class="empty" style="padding:22px"><span class="empty-title">' + esc(t("rotation.empty")) + "</span></div>";
+  }
+  return enabled
+    .map(
+      (e) =>
+        '<a class="rot-row" href="#/engines">' +
+        '<span class="rot-pos">' + (e.searchPosition + 1) + "</span>" +
+        engineLogoHtml(e) +
+        '<span class="rot-name">' + esc(e.label || e.id) + "</span>" +
+        bar(remainingPctOf(e) ?? 100, "accent") +
+        '<svg class="rot-arrow" width="15" height="15"><use href="#i-arrow"/></svg></a>',
+    )
+    .join("");
+}
 
-  const health = engines
+function healthHtml() {
+  return sortedEngines()
     .map((e) => {
       const pct = remainingPctOf(e);
       const src = e.remote && e.remote.limit ? t("health.source.remote") : e.monthlyLimit > 0 ? t("health.source.local") : t("health.source.none");
       return (
-        '<a class="health-card' + (e.enabled ? "" : " off") + '" href="#/engines" data-focus-engine="' + esc(e.id) + '">' +
+        '<a class="health-card' + (e.enabled ? "" : " off") + '" href="#/engines">' +
         ringGauge(pct) +
         '<span class="health-meta"><span class="health-name">' + esc(e.label || e.id) + "</span>" +
         '<span class="health-src">' + (e.enabled ? esc(src) : esc(t("health.off"))) + "</span></span></a>"
       );
     })
     .join("");
+}
 
-  const recent = h.length
-    ? h
-        .slice(0, 6)
-        .map(
-          (e) =>
-            '<a class="recent-row" href="#/history">' +
-            '<span class="hkind-icon ' + esc(e.kind) + '" style="width:24px;height:24px"><svg width="13" height="13"><use href="#i-' + (e.kind === "search" ? "search" : "link") + '"/></svg></span>' +
-            '<span class="ri">' + esc(e.input) + "</span>" +
-            (e.ok ? "" : '<svg width="13" height="13" style="color:var(--crit)"><use href="#i-x"/></svg>') +
-            '<span class="rt">' + relTime(e.ts) + "</span></a>",
-        )
-        .join("")
-    : '<div class="empty" style="padding:20px"><span class="muted">' + esc(t("recent.empty")) + "</span></div>";
+function recentHtml() {
+  const h = state.history;
+  if (!h.length) return '<div class="empty" style="padding:20px"><span class="muted">' + esc(t("recent.empty")) + "</span></div>";
+  return h
+    .slice(0, 6)
+    .map(
+      (e) =>
+        '<a class="recent-row" href="#/history">' +
+        '<span class="hkind-icon ' + esc(e.kind) + '" style="width:24px;height:24px"><svg width="13" height="13"><use href="#i-' + (e.kind === "search" ? "search" : "link") + '"/></svg></span>' +
+        '<span class="ri">' + esc(e.input) + "</span>" +
+        (e.ok ? "" : '<svg width="13" height="13" style="color:var(--crit)"><use href="#i-x"/></svg>') +
+        '<span class="rt">' + relTime(e.ts) + "</span></a>",
+    )
+    .join("");
+}
 
+function renderOverview() {
+  const v = statValues();
   $("#view").innerHTML =
     '<div class="page">' +
     pageHead(t("overview.title"), t("overview.sub"), state.meta.month) +
     (anyKeySet() ? "" : '<div class="banner"><svg width="16" height="16"><use href="#i-alert"/></svg><span>' + esc(t("notice.nokeys")) + "</span></div>") +
     '<div class="overview-grid">' +
-    statCard("search", t("stat.searches"), t("stat.searchesSub"), searches) +
-    statCard("link", t("stat.fetches"), t("stat.fetchesSub"), fetches) +
-    statCard("alert", t("stat.errors"), t("stat.errorsSub"), errRate + "%") +
-    statCard("zap", t("stat.duration"), t("stat.durationSub"), avg ? fmtMs(avg) : "–") +
+    statCard("searches", "search", t("stat.searches"), t("stat.searchesSub"), v.searches) +
+    statCard("fetches", "link", t("stat.fetches"), t("stat.fetchesSub"), v.fetches) +
+    statCard("errors", "alert", t("stat.errors"), t("stat.errorsSub"), v.errRate) +
+    statCard("duration", "zap", t("stat.duration"), t("stat.durationSub"), v.avg) +
     "</div>" +
     '<div class="two-col">' +
-    '<div class="panel"><div class="panel-head"><h2>' + esc(t("rotation.title")) + '</h2><span class="sub">' + esc(t("rotation.sub")) + '</span><span class="spacer"><a class="btn btn-ghost" href="#/engines">' + esc(t("rotation.manage")) + ' <svg width="13" height="13"><use href="#i-arrow"/></svg></a></span></div><div class="rot-list">' + rotation + "</div></div>" +
-    '<div class="panel"><div class="panel-head"><h2>' + esc(t("health.title")) + '</h2><span class="sub">' + esc(t("health.sub")) + "</span></div>" + '<div class="health-grid">' + health + "</div></div>" +
+    '<div class="panel"><div class="panel-head"><h2>' + esc(t("rotation.title")) + '</h2><span class="sub">' + esc(t("rotation.sub")) + '</span><span class="spacer"><a class="btn btn-ghost" href="#/engines">' + esc(t("rotation.manage")) + ' <svg width="13" height="13"><use href="#i-arrow"/></svg></a></span></div><div class="rot-list">' + rotationHtml() + "</div></div>" +
+    '<div class="panel"><div class="panel-head"><h2>' + esc(t("health.title")) + '</h2><span class="sub">' + esc(t("health.sub")) + "</span></div>" + '<div class="health-grid">' + healthHtml() + "</div></div>" +
     "</div>" +
     '<div class="panel"><div class="panel-head"><h2>' + esc(t("recent.title")) + '</h2><span class="spacer"><a class="btn btn-ghost" href="#/history">' + esc(t("recent.all")) + ' <svg width="13" height="13"><use href="#i-arrow"/></svg></a></span></div>' +
-    '<div class="sparkline">' + sparkline(h) + "</div>" +
-    '<div class="recent-list">' + recent + "</div></div>" +
+    '<div class="sparkline">' + sparkline(state.history) + "</div>" +
+    '<div class="recent-list">' + recentHtml() + "</div></div>" +
     '<details class="panel setup-panel"><summary>' + esc(t("setup.summary")) + '<svg class="chev" width="16" height="16"><use href="#i-chevron"/></svg></summary>' +
     '<div class="snippets">' +
     '<div class="snippet"><h3>' + esc(t("snippet.codex")) + '</h3><pre id="snip-codex"></pre><button class="btn" data-copy="snip-codex">' + esc(t("btn.copy")) + "</button></div>" +
@@ -367,6 +393,29 @@ function renderOverview() {
   renderSnippets();
 }
 
+/** Patcht nur die dynamischen Bereiche der Übersicht — kein Voll-Render, kein Flackern. */
+function updateOverview() {
+  const root = $("#view");
+  if (!root.querySelector(".rot-list")) return;
+  const v = statValues();
+  const set = (id, val) => {
+    const el = root.querySelector('[data-stat="' + id + '"]');
+    if (el && el.textContent !== String(val)) el.textContent = String(val);
+  };
+  set("searches", v.searches);
+  set("fetches", v.fetches);
+  set("errors", v.errRate);
+  set("duration", v.avg);
+  const rot = root.querySelector(".rot-list");
+  if (rot) rot.innerHTML = rotationHtml();
+  const health = root.querySelector(".health-grid");
+  if (health) health.innerHTML = healthHtml();
+  const spark = root.querySelector(".sparkline");
+  if (spark) spark.innerHTML = sparkline(state.history);
+  const recent = root.querySelector(".recent-list");
+  if (recent) recent.innerHTML = recentHtml();
+}
+
 function pageHead(title, sub, month) {
   return (
     '<div class="page-head"><h1>' + esc(title) + (month ? ' <span class="badge">' + esc(month) + "</span>" : "") + "</h1>" +
@@ -374,10 +423,10 @@ function pageHead(title, sub, month) {
   );
 }
 
-function statCard(icon, label, sub, value) {
+function statCard(stat, icon, label, sub, value) {
   return (
     '<div class="panel stat-card"><span class="stat-icon"><svg width="16" height="16"><use href="#i-' + icon + '"/></svg></span>' +
-    '<span class="stat-value">' + esc(value) + '</span><span class="stat-label">' + esc(label) + '</span><span class="stat-sub">' + esc(sub) + "</span></div>"
+    '<span class="stat-value" data-stat="' + stat + '">' + esc(value) + '</span><span class="stat-label">' + esc(label) + '</span><span class="stat-sub">' + esc(sub) + "</span></div>"
   );
 }
 
@@ -465,7 +514,7 @@ function renderEngines() {
         '<div class="engine-head">' +
         '<span class="handle" title="Drag & Drop"><svg width="16" height="16"><use href="#i-grip"/></svg></span>' +
         '<span class="pos-badge">' + (e.enabled ? e.searchPosition + 1 : "–") + "</span>" +
-        '<span class="avatar" style="' + avatarStyle(e.id) + '">' + esc((e.label || e.id)[0]) + "</span>" +
+        engineLogoHtml(e) +
         '<span class="engine-title"><span class="engine-name">' + esc(e.label || e.id) + "</span>" +
         '<span class="engine-badges">' +
         (e.keyless === "ip" ? '<span class="badge ip">' + esc(t("badge.keyless")) + "</span>" : "") +
@@ -543,10 +592,10 @@ function flipReorder(container, from, to) {
 
 /* ---------- View: Verlauf ---------- */
 
-function renderHistory() {
+function filteredHistory() {
   const f = state.filters;
   const q = f.q.trim().toLowerCase();
-  const entries = state.history.filter((e) => {
+  return state.history.filter((e) => {
     if (f.kind !== "all" && e.kind !== f.kind) return false;
     if (f.engine && e.engine !== f.engine) return false;
     if (q) {
@@ -555,13 +604,10 @@ function renderHistory() {
     }
     return true;
   });
-  const fails = entries.filter((e) => !e.ok).length;
+}
 
-  const engineOptions = sortedEngines()
-    .map((e) => '<option value="' + esc(e.id) + '"' + (f.engine === e.id ? " selected" : "") + ">" + esc(e.label || e.id) + "</option>")
-    .join("");
-
-  const rows = entries
+function histListHtml(entries) {
+  return entries
     .map((e) => {
       const key = e.ts;
       const failChips = (e.attempts || [])
@@ -616,6 +662,26 @@ function renderHistory() {
       );
     })
     .join("");
+}
+
+function bindHistToggles() {
+  document.querySelectorAll(".hist").forEach((det) => {
+    det.addEventListener("toggle", () => {
+      const k = det.dataset.key;
+      if (det.open) state.historyOpen.add(k);
+      else state.historyOpen.delete(k);
+    });
+  });
+}
+
+function renderHistory() {
+  const f = state.filters;
+  const entries = filteredHistory();
+  const fails = entries.filter((e) => !e.ok).length;
+
+  const engineOptions = sortedEngines()
+    .map((e) => '<option value="' + esc(e.id) + '"' + (f.engine === e.id ? " selected" : "") + ">" + esc(e.label || e.id) + "</option>")
+    .join("");
 
   $("#view").innerHTML =
     '<div class="page">' +
@@ -635,29 +701,40 @@ function renderHistory() {
     "</div>" +
     '<p class="hist-summary">' + esc(t("hist.shown", { n: entries.length, f: fails })) + "</p>" +
     (entries.length
-      ? '<div class="hist-list">' + rows + "</div>"
+      ? '<div class="hist-list">' + histListHtml(entries) + "</div>"
       : '<div class="panel"><div class="empty"><span class="empty-icon"><svg width="24" height="24"><use href="#i-clock"/></svg></span>' +
         '<span class="empty-title">' + esc(t("history.empty")) + '</span><span class="empty-hint">' + esc(t("history.emptyHint")) + "</span></div></div>") +
     "</div>";
 
-  document.querySelectorAll(".hist").forEach((det) => {
-    det.addEventListener("toggle", () => {
-      const k = det.dataset.key;
-      if (det.open) state.historyOpen.add(k);
-      else state.historyOpen.delete(k);
-    });
-  });
+  bindHistToggles();
 
   const qInput = $("#hist-q");
   qInput.addEventListener("input", () => {
     state.filters.q = qInput.value;
     clearTimeout(qInput.__t);
-    qInput.__t = setTimeout(() => renderHistory(), 220);
+    qInput.__t = setTimeout(updateHistory, 220);
   });
   $("#hist-engine").addEventListener("change", (ev) => {
     state.filters.engine = ev.target.value;
     renderHistory();
   });
+}
+
+/** Patcht nur Liste + Zusammenfassung — Toolbar und Fokus im Filterfeld bleiben unangetastet. */
+function updateHistory() {
+  const root = $("#view");
+  const list = root.querySelector(".hist-list");
+  if (!list) {
+    // Übergang vom Empty-State zu ersten Einträgen → einmal voll rendern
+    if (filteredHistory().length && root.querySelector(".empty")) renderHistory();
+    return;
+  }
+  const entries = filteredHistory();
+  const fails = entries.filter((e) => !e.ok).length;
+  const summary = root.querySelector(".hist-summary");
+  if (summary) summary.textContent = t("hist.shown", { n: entries.length, f: fails });
+  list.innerHTML = histListHtml(entries);
+  bindHistToggles();
 }
 
 function segBtn(kind, label) {
@@ -873,16 +950,32 @@ $("#theme-btn").addEventListener("click", () => {
 
 /* ---------- Polling ---------- */
 
+/* ---------- Polling (gezielte Teil-Updates, kein Voll-Render) ---------- */
+
+let lastHistorySig = "";
+function historySig() {
+  const h = state.history;
+  // Minuten-Bucket: relative Zeiten ("vor 1 Stunde") bleiben ohne Flackern frisch
+  return h.length + ":" + (h[0] ? h[0].ts : "") + ":" + Math.floor(Date.now() / 60000);
+}
+
+let lastStatusSig = "";
+function statusSig() {
+  return state.status
+    .map((s) => s.id + ":" + (s.enabled ? 1 : 0) + ":" + (s.remainingPct ?? "n") + ":" + (s.remoteError || ""))
+    .join("|");
+}
+
 setInterval(() => {
   if (document.hidden || state.unauthorized || state.livePaused) return;
   if (state.route !== "/history" && state.route !== "/") return;
   loadHistory()
     .then(() => {
-      if (state.route === "/history") renderHistory();
-      else if (state.route === "/") {
-        // Übersicht: nur Liste/Sparkline austauschen wäre feiner — Komplett-Render ist hier unschädlich (keine Inputs)
-        render();
-      }
+      const sig = historySig();
+      if (sig === lastHistorySig) return; // nichts Neues → kein DOM-Write, kein Flackern
+      lastHistorySig = sig;
+      if (state.route === "/history") updateHistory();
+      else if (state.route === "/") updateOverview();
     })
     .catch(() => {});
 }, 5000);
@@ -902,12 +995,34 @@ setInterval(async () => {
       });
     }
   } else if (state.route === "/") {
-    render();
+    const sig = statusSig();
+    if (sig === lastStatusSig) return;
+    lastStatusSig = sig;
+    updateOverview();
   }
 }, 30000);
 
 window.addEventListener("resize", positionNavInd);
 window.addEventListener("hashchange", () => setRoute(parseHash()));
+
+/* Favicon-Load-Fehler → farbiger Buchstaben-Avatar (Capture-Phase: "error" bubblt nicht) */
+document.addEventListener(
+  "error",
+  (ev) => {
+    const img = ev.target;
+    if (!img || !img.matches || !img.matches("img.logo")) return;
+    const hue = Number(img.dataset.hue) || 210;
+    const span = document.createElement("span");
+    span.className = "avatar";
+    span.style.cssText =
+      "background:linear-gradient(135deg,hsl(" + hue + " 62% 52%),hsl(" + ((hue + 28) % 360) + " 68% 40%))";
+    span.textContent = img.dataset.fallback || "?";
+    const wrap = img.closest(".logo-wrap");
+    if (wrap) wrap.replaceWith(span);
+    else img.remove();
+  },
+  true,
+);
 
 /* ---------- Boot ---------- */
 
