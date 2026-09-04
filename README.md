@@ -26,8 +26,10 @@ Eine Engine = ~1.000 Gratis-Anfragen/Monat. Sieben Engines rotiert = **~10.000+/
 
 ## Schnellstart (Codex / Claude / Cursor)
 
+Installiert direkt aus GitHub — kein npm-Publish nötig, `prepare` baut `dist` beim Installieren:
+
 ```bash
-npx -y search-rotation
+npx -y github:RobinBially/search-rotation
 ```
 
 **Codex** — `~/.codex/config.toml`:
@@ -35,7 +37,7 @@ npx -y search-rotation
 ```toml
 [mcp_servers.search-rotation]
 command = "npx"
-args = ["-y", "search-rotation"]
+args = ["-y", "github:RobinBially/search-rotation"]
 ```
 
 **Claude Desktop / Claude Code** — `claude_desktop_config.json`:
@@ -43,7 +45,7 @@ args = ["-y", "search-rotation"]
 ```json
 {
   "mcpServers": {
-    "search-rotation": { "command": "npx", "args": ["-y", "search-rotation"] }
+    "search-rotation": { "command": "npx", "args": ["-y", "github:RobinBially/search-rotation"] }
   }
 }
 ```
@@ -54,14 +56,14 @@ args = ["-y", "search-rotation"]
 "search-rotation": { "type": "local", "command": ["search-rotation"], "codemode": true }
 ```
 
-Lokale Entwicklung: `chmod +x dist/index.js && ln -sf "$PWD/dist/index.js" ~/.local/bin/search-rotation` — der Eintrag bleibt über Updates stabil (`git pull && npm install && npm run build` genügt). Nach npm-Publish reicht stattdessen `["npx", "-y", "search-rotation"]`.
+Lokale Entwicklung: `chmod +x dist/index.js && ln -sf "$PWD/dist/index.js" ~/.local/bin/search-rotation` — der Eintrag bleibt über Updates stabil (`git pull && npm install && npm run build` genügt); npx zieht bei jedem Lauf den aktuellen Stand des `main`-Branch.
 
 Der stdio-Server startet **im selben Prozess** ein lokales Dashboard (`http://127.0.0.1:6277`, Link steht im Server-Log; der Agent kann es über das Tool `open_dashboard` öffnen). Dort: Keys hinterlegen, Reihenfolge ziehen, Engines togglen, Kontingente sehen, Engines live testen.
 
 ## Remote-Betrieb (Streamable HTTP)
 
 ```bash
-npx -y search-rotation --http --port 6277 --token <geheim>
+npx -y github:RobinBially/search-rotation --http --port 6277 --token <geheim>
 ```
 
 Client-Config (Claude):
