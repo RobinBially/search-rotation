@@ -43,7 +43,7 @@
     "smoke:package": "node scripts/smoke-package.mjs"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.0",
+    "@hono/node-server": "^2.1.1",
     "@modelcontextprotocol/sdk": "^1.17.0",
     "hono": "^4.9.0",
     "zod": "^4.5.4"
