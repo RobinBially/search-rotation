@@ -26,7 +26,7 @@ Der Gratis-Modus ist **keine Ausgabengarantie**: andere Anwendungen können dass
 ## Remote-Betrieb (Streamable HTTP)
 
 ```bash
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.1 --http --host 0.0.0.0 --port 6277 --public-origin https://search.example.com --token <geheim>
+npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.2 --http --host 0.0.0.0 --port 6277 --public-origin https://search.example.com --token <geheim>
 ```
 
 Client-Config (Claude):
