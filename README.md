@@ -18,6 +18,19 @@ Rotate across available quotas, automatically fail over when a provider is unava
 
 ## Quick start
 
+### Homebrew
+
+```sh
+brew install localfoundry/tap/search-rotation
+search-rotation --http --open
+```
+
+Homebrew installs the required Node.js runtime. For MCP over stdio, configure your
+client to run `search-rotation` with no arguments. See the
+[LocalFoundry tap](https://github.com/localfoundry/homebrew-tap) for upgrades and details.
+
+### GitHub / npx
+
 Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
 
 ```sh

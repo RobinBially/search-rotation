@@ -2,7 +2,32 @@
 
 [← Back to README](../README.md)
 
-Requires Node.js 20.3+ and Git. All examples install directly from GitHub; no npm account is needed. The version tag keeps installations reproducible.
+## Homebrew installation
+
+```sh
+brew install localfoundry/tap/search-rotation
+```
+
+Homebrew installs Node.js automatically. Set your MCP client's command to
+`search-rotation` and leave its arguments empty. GUI clients may need the absolute
+path printed by `echo "$(brew --prefix)/bin/search-rotation"`.
+
+For example, a client using `mcpServers` accepts:
+
+```json
+{
+  "mcpServers": {
+    "search-rotation": {
+      "command": "search-rotation",
+      "args": []
+    }
+  }
+}
+```
+
+The client-specific examples below are the GitHub/npx alternative. They require
+Node.js 20.3+ and Git; no npm account is needed. The version tag keeps installations
+reproducible.
 
 ## Codex
 
