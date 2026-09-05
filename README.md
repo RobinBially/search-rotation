@@ -34,13 +34,13 @@ client to run `search-rotation` with no arguments. See the
 Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.2
+npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.3
 ```
 
 To preview the dashboard:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.2 --http --open
+npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.3 --http --open
 ```
 
 Add your provider keys in the dashboard, then connect your assistant using the **[MCP client setup guide](docs/clients.md)** for Codex, Claude, Cursor, or OpenCode.

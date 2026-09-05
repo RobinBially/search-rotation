@@ -1,7 +1,7 @@
 {
   "name": "search-rotation",
-  "version": "0.4.2",
-  "description": "Round-robin web search over the free tiers of multiple search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina, DuckDuckGo) as an MCP server — with a local dashboard for API keys, engine order/toggles and live quota status.",
+  "version": "0.4.3",
+  "description": "Round-robin web search over the free tiers of multiple search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina, DuckDuckGo) as an MCP server \u2014 with a local dashboard for API keys, engine order/toggles and live quota status.",
   "type": "module",
   "license": "MIT",
   "author": {
@@ -46,7 +46,7 @@
     "@hono/node-server": "^1.14.0",
     "@modelcontextprotocol/sdk": "^1.17.0",
     "hono": "^4.9.0",
-    "zod": "^3.25.76"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
