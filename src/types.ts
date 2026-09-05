@@ -15,6 +15,9 @@ export interface SearchOutcome {
 export interface SearchInput {
   query: string;
   numResults?: number;
+  timeRange?: "day" | "week" | "month" | "year";
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface FetchInput {
@@ -67,6 +70,8 @@ export interface EngineMeta {
 
 export interface EngineAdapter {
   meta: EngineMeta;
+  /** Explicit opt-in for native date filtering, including credential-specific support. */
+  supportsSearchTime?(input: SearchInput, ctx: EngineContext): boolean;
   estimateCost?(kind: Capability, input: SearchInput | FetchInput): number;
   search?(input: SearchInput, ctx: EngineContext): Promise<SearchOutcome>;
   fetchUrl?(input: FetchInput, ctx: EngineContext): Promise<string>;

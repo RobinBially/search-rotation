@@ -4,6 +4,7 @@ import type { UsageStore } from './usage.js';
 import { quotaStatus, remainingPct, requestCost } from './quota.js';
 import { fetchRemoteQuotaCached, recordRemoteConsumption } from './status.js';
 import { HttpError } from './engines/base.js';
+import { hasTimeFilter, normalizeSearchTime, describeSearchTime } from './search-time.js';
 import { abortable } from './abort.js';
 
 export class RouterError extends Error {
@@ -16,7 +17,7 @@ export interface RouterOptions { preferEngine?: string; signal?: AbortSignal;
   onlyEngine?: string; }
 
 export class SearchRouter {
-  private rr: Record<Capability, number> = { search: 0, fetch: 0 };
+  private rr = new Map<string, number>();
   private health = new Map<string, Health>();
   constructor(private readonly opts: {
     getConfig(): PolyConfig; usage: UsageStore; adapters: EngineAdapter[];
@@ -45,7 +46,7 @@ export class SearchRouter {
     state.until = this.now() + delay;
   }
 
-  private async chain(kind: Capability, signal: AbortSignal, prefer?: string, onlyEngine?: string): Promise<Candidate[]> {
+  private async chain(kind: Capability, signal: AbortSignal, prefer?: string, onlyEngine?: string, searchInput?: SearchInput): Promise<Candidate[]> {
     signal.throwIfAborted();
     const cfg = this.opts.getConfig();
     const byId = new Map(this.opts.adapters.map(a => [a.meta.id, a]));
@@ -56,6 +57,7 @@ export class SearchRouter {
       if (!adapter || !e || (!onlyEngine && !e.enabled) || !(kind === 'search' ? adapter.search : adapter.fetchUrl)) continue;
       if (!onlyEngine && !e.apiKey && adapter.meta.keylessCapabilities && !adapter.meta.keylessCapabilities.includes(kind)) continue;
       const c = { adapter, ctx: { apiKey: e.apiKey, extra: e.extra, signal } };
+      if (searchInput && hasTimeFilter(searchInput) && !adapter.supportsSearchTime?.(searchInput, c.ctx)) continue;
       if (this.state(c).until > this.now()) continue;
       entries.push(c);
     }
@@ -69,7 +71,10 @@ export class SearchRouter {
       rated.filter(r => r.pct !== null && r.pct > 0 && r.pct <= 0.1),
       cfg.settings.strictFreeMode ? [] : rated.filter(r => r.pct !== null && r.pct <= 0),
     ];
-    const turn = prefer ? 0 : this.rr[kind]++;
+    // Filtered and unfiltered calls must not advance each other's rotation cursor.
+    const pool = JSON.stringify([kind, Boolean(searchInput && hasTimeFilter(searchInput)), rated.map(r => r.c.adapter.meta.id).sort()]);
+    const turn = prefer ? 0 : (this.rr.get(pool) ?? 0);
+    if (!prefer) this.rr.set(pool, turn + 1);
     let ordered = groups.flatMap(group => {
       const start = group.length ? turn % group.length : 0;
       return [...group.slice(start), ...group.slice(0, start)];
@@ -91,10 +96,10 @@ export class SearchRouter {
     const timer = setTimeout(() => controller.abort(new Error(`Zeitlimit nach ${timeoutMs} ms überschritten`)), timeoutMs);
     const signal = opts.signal ? AbortSignal.any([opts.signal, controller.signal]) : controller.signal;
     const attempts: Attempt[] = [];
-    const rawInput = kind === 'search' ? (input as SearchInput).query : (input as FetchInput).url;
+    const rawInput = kind === 'search' ? [(input as SearchInput).query, hasTimeFilter(input as SearchInput) ? `[${describeSearchTime(input as SearchInput)}]` : ''].filter(Boolean).join(' ') : (input as FetchInput).url;
     try {
-      const chain = await this.chain(kind, signal, opts.onlyEngine ?? opts.preferEngine, opts.onlyEngine);
-      if (!chain.length) throw new RouterError(`Keine aktivierte ${kind === 'search' ? 'Such-Engine' : 'Fetch-Engine'} verfügbar. Engines, Cooldown und Gratis-Kontingent prüfen.`, attempts);
+      const chain = await this.chain(kind, signal, opts.onlyEngine ?? opts.preferEngine, opts.onlyEngine, kind === 'search' ? input as SearchInput : undefined);
+      if (!chain.length) throw new RouterError(`Keine aktivierte ${kind === 'search' ? 'Such-Engine' : 'Fetch-Engine'} verfügbar. ${kind === 'search' && hasTimeFilter(input as SearchInput) ? 'Für diesen Zeitfilter ist aktuell keine kompatible Engine verfügbar. ' : ''}Engines, Cooldown und Gratis-Kontingent prüfen.`, attempts);
       for (const c of chain) {
         signal.throwIfAborted();
         let reservation: Health | undefined;
@@ -144,6 +149,7 @@ export class SearchRouter {
   }
 
   async search(input: SearchInput, opts: RouterOptions = {}): Promise<SearchResponse> {
+    input = normalizeSearchTime(input, this.now());
     const configured = this.opts.getConfig().settings.defaultNumResults;
     const numResults = input.numResults ?? (configured === null ? undefined : configured ?? 8);
     const { value, engine, attempts } = await this.execute('search', { ...input, numResults }, opts);

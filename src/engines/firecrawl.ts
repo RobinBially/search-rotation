@@ -4,12 +4,15 @@ import { bearer, optionalCap as cap, httpJson } from "./base.js";
 const BASE = "https://api.firecrawl.dev/v2";
 
 async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOutcome> {
+  const usDate = (date: string) => `${date.slice(5, 7)}/${date.slice(8, 10)}/${date.slice(0, 4)}`;
+  const tbs = input.startDate && input.endDate
+    ? `cdr:1,cd_min:${usDate(input.startDate)},cd_max:${usDate(input.endDate)}` : undefined;
   const j = await httpJson<any>(
     `${BASE}/search`,
     {
       method: "POST",
       headers: { "content-type": "application/json", ...bearer(ctx.apiKey) },
-      body: JSON.stringify({ query: input.query, limit: cap(input.numResults) }),
+      body: JSON.stringify({ query: input.query, limit: cap(input.numResults), tbs }),
     },
     { signal: ctx.signal, timeoutMs: 45_000 },
   );
@@ -81,6 +84,7 @@ export const FIRECRAWL: EngineAdapter = {
   // Documented Firecrawl v2 default: 10 results (docs.firecrawl.dev/api-reference/endpoint/search).
   // Cost remains an estimate; do not substitute our dashboard default here.
   estimateCost: (kind, input) => kind === "search" ? 2 * Math.ceil((cap((input as SearchInput).numResults) ?? 10) / 10) : 1,
+  supportsSearchTime: input => Boolean(input.startDate && input.endDate),
   search,
   fetchUrl,
   remoteQuota,

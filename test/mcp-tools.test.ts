@@ -405,3 +405,27 @@ test("FIXED: GET /mcp antwortet im Stateless-Modus mit 405 + Allow: POST", async
   assert.equal(res.status, 405);
   assert.equal(res.headers.get("allow"), "POST");
 });
+
+test('web_search exposes and forwards time filters, prints publication dates and rejects invalid input', async () => {
+  let received: SearchInput | undefined;
+  const a = adapter('a', { search: async input => { received = input; return { items: [{ title: 'Paper', url: 'https://example.com', published: '2026-08-15' }] }; } });
+  a.supportsSearchTime = () => true;
+  const { deps } = fakeDeps(searchRouter([a]));
+  const client = await connect(deps);
+  try {
+    const schema = (await client.listTools()).tools.find(tool => tool.name === 'web_search')!.inputSchema;
+    for (const key of ['timeRange', 'startDate', 'endDate']) assert.ok(schema.properties?.[key]);
+    const result = await client.callTool({ name: 'web_search', arguments: { query: 'q', startDate: '2026-08-01', endDate: '2026-08-31' } });
+    assert.equal(result.isError, undefined);
+    assert.equal(received?.startDate, '2026-08-01');
+    assert.equal(received?.endDate, '2026-08-31');
+    assert.match(text(result), /Published: 2026-08-15/);
+    assert.match(text(result), /Time filter: from 2026-08-01 through 2026-08-31/);
+    for (const args of [{ startDate: '2026-02-30' }, { timeRange: 'hour' }, { timeRange: 'week', endDate: '2026-09-01' }]) {
+      received = undefined;
+      const bad = await client.callTool({ name: 'web_search', arguments: { query: 'q', ...args } });
+      assert.equal(bad.isError, true);
+      assert.equal(received, undefined);
+    }
+  } finally { await client.close(); }
+});

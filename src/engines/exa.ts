@@ -46,6 +46,8 @@ async function directSearch(input: SearchInput, ctx: EngineContext): Promise<Sea
       headers: { "content-type": "application/json", "x-api-key": ctx.apiKey! },
       body: JSON.stringify({
         query: input.query,
+        startPublishedDate: input.startDate ? `${input.startDate}T00:00:00.000Z` : undefined,
+        endPublishedDate: input.endDate ? `${input.endDate}T23:59:59.999Z` : undefined,
         numResults: cap(input.numResults),
         type: "auto",
         contents: { text: { maxCharacters: 400 } },
@@ -127,6 +129,7 @@ export const EXA: EngineAdapter = {
     notes:
       "Ohne Key: automatisch über gehosteten Exa-MCP (mcp.exa.ai, IP-basiert limitiert) — Suche und Fetch. Mit Key: direkte API. Nutzung lokal gezählt; tatsächliches Guthaben und Anbieter-Gesamtverbrauch unbekannt.",
   },
+  supportsSearchTime: (_input, ctx) => Boolean(ctx.apiKey),
   search,
   fetchUrl,
 };

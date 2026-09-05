@@ -24,6 +24,9 @@ window.I18N = {
     "tools.param.query": "Erforderlich · Suchbegriff als Text.",
     "tools.param.count": "Optional · 1–20 Ergebnisse. Ohne Angabe gilt die Dashboard-Vorgabe (anfangs 8) oder der Anbieterstandard.",
     "tools.param.engine": "Optional · Bevorzugte Engine-ID, z. B. tavily. Fallback auf andere Anbieter bleibt aktiv.",
+    "tools.param.timeRange": "Optional · day/week/month/year: letzte 1/7/30/365 Tage bis heute (UTC, Tagesgenauigkeit). Nicht mit Datumsgrenzen kombinierbar. Nur kompatible Anbieter nehmen an Rotation und Failover teil.",
+    "tools.param.startDate": "Optional · Startdatum YYYY-MM-DD. Allein oder mit endDate; muss vor oder auf endDate liegen.",
+    "tools.param.endDate": "Optional · Enddatum YYYY-MM-DD. Datumsinterpretation hängt vom Anbieter ab; ungeeignete Anbieter werden übersprungen.",
     "tools.param.url": "Erforderlich · Vollständige URL der Webseite.",
 
     "settings.title": "Rotation einstellen",
@@ -161,6 +164,9 @@ window.I18N = {
     "tools.param.query": "Required · Search query as text.",
     "tools.param.count": "Optional · 1–20 results. Omit to use the dashboard setting (initially 8) or the provider default.",
     "tools.param.engine": "Optional · Preferred engine ID, e.g. tavily. Fallback to other providers remains enabled.",
+    "tools.param.timeRange": "Optional · day/week/month/year: past 1/7/30/365 days through today (UTC, date precision). Cannot combine with date bounds. Rotation and failover use compatible providers only.",
+    "tools.param.startDate": "Optional · Start date YYYY-MM-DD. Alone or with endDate; must be on or before endDate.",
+    "tools.param.endDate": "Optional · End date YYYY-MM-DD. Date semantics depend on the provider; incompatible providers are skipped.",
     "tools.param.url": "Required · Full webpage URL.",
 
     "settings.title": "Rotation settings",

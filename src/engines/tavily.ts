@@ -13,6 +13,8 @@ async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOut
         ...(ctx.apiKey ? bearer(ctx.apiKey) : { "X-Tavily-Access-Mode": "keyless" }) },
       body: JSON.stringify({
         query: input.query,
+        start_date: input.startDate,
+        end_date: input.endDate,
         max_results: cap(input.numResults),
         ...(ctx.apiKey ? { include_answer: true } : { chunks_per_source: 3 }),
         search_depth: "basic",
@@ -76,6 +78,7 @@ export const TAVILY: EngineAdapter = {
     quotaEndpoint: true,
     notes: "Suche ohne Key im Keyless-Modus; Limit und Gesamtverbrauch unbekannt. Fetch benötigt einen Key. Mit Key ist die Quota per API abrufbar.",
   },
+  supportsSearchTime: () => true,
   search,
   fetchUrl,
   remoteQuota,

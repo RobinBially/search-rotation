@@ -3,6 +3,7 @@ import { z } from "zod";
 import { RouterError, type SearchRouter } from "../router.js";
 import type { StatusRow } from "../status.js";
 import { engineStatus } from "./engine-status.js";
+import { dateSchema, timeRangeSchema, describeSearchTime } from "../search-time.js";
 import { VERSION } from "../version.js";
 import { readFileSync } from "node:fs";
 
@@ -43,21 +44,26 @@ export function buildMcpServer(deps: McpDeps): McpServer {
     {
       title: "Web Search",
       description:
-        "Web search with automatic round-robin across multiple free search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, DuckDuckGo) including transparent failover. Returns numbered results with title, URL and snippet.",
+        "Web search with automatic round-robin across multiple free search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, DuckDuckGo) including transparent failover. Returns numbered results with title, URL, snippet and publication date when available. Time filters restrict rotation and failover to compatible providers; never silently dropped.",
       inputSchema: {
         query: z.string().describe("Search query"),
         numResults: z.number().int().min(1).max(20).optional().describe("Optional result count (1–20). Omit to use the dashboard setting: a custom count or the provider default."),
+        timeRange: timeRangeSchema.optional().describe("Relative UTC date window: day=1, week=7, month=30, year=365 days through today. Cannot combine with startDate/endDate; day precision, not rolling hours."),
+        startDate: dateSchema.optional().describe("Start date YYYY-MM-DD. May be used alone or with endDate; cannot combine with timeRange."),
+        endDate: dateSchema.optional().describe("End date YYYY-MM-DD (through this date, subject to provider boundary semantics). Cannot combine with timeRange."),
         engine: z.string().optional().describe("Preferred engine id; failover to the other engines stays active"),
       },
     },
-    async ({ query, numResults, engine }, extra) => {
-      const r = await withRouterDiagnostics(deps.router.search({ query, numResults }, { preferEngine: engine, signal: deps.requestSignal ? AbortSignal.any([extra.signal, deps.requestSignal]) : extra.signal }));
+    async ({ query, numResults, engine, timeRange, startDate, endDate }, extra) => {
+      const r = await withRouterDiagnostics(deps.router.search({ query, numResults, timeRange, startDate, endDate }, { preferEngine: engine, signal: deps.requestSignal ? AbortSignal.any([extra.signal, deps.requestSignal]) : extra.signal }));
       const lines = r.items.map((it, i) => {
         const snip = it.snippet ? `\n   ${it.snippet.replace(/\s+/g, " ").slice(0, 400)}` : "";
-        return `${i + 1}. ${it.title}\n   ${it.url}${snip}`;
+        return `${i + 1}. ${it.title}\n   ${it.url}${it.published ? `\n   Published: ${it.published}` : ""}${snip}`;
       });
       const failover = r.attempts.filter((a) => !a.ok).map((a) => `${a.engine}: ${a.error}`);
       const head = [`Search "${query}" via ${r.engine} (${r.items.length} results)`];
+      const period = describeSearchTime({ query, timeRange, startDate, endDate });
+      if (period) head.push(`Time filter: ${period} (provider date semantics apply)`);
       if (r.answer) head.push(`Answer: ${r.answer}`);
       if (failover.length) head.push(`Failover after: ${failover.join("; ")}`);
       return { content: [{ type: "text", text: [...head, lines.join("\n")].join("\n\n") }] };

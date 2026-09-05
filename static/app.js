@@ -495,7 +495,7 @@ function renderSnippets() {
 
 function renderTools() {
   const tools = [
-    { name: "web_search", icon: "search", params: [["query", "query"], ["numResults", "count"], ["engine", "engine"]], args: { query: "latest AI research", numResults: 5 } },
+    { name: "web_search", icon: "search", params: [["query", "query"], ["numResults", "count"], ["engine", "engine"], ["timeRange", "timeRange"], ["startDate", "startDate"], ["endDate", "endDate"]], args: { query: "latest AI research", numResults: 5, timeRange: "week" } },
     { name: "fetch_url", icon: "link", params: [["url", "url"]], args: { url: "https://example.com" } },
     { name: "engine_status", icon: "gauge", params: [], args: {} },
     { name: "open_dashboard", icon: "stack", params: [], args: {} },

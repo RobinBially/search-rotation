@@ -1,28 +1,27 @@
-## v0.3.3 — Configurable result counts and clearer tool discovery
+## v0.4.0 — Search time filters and compatible-provider rotation
 
-Choose a custom search result count or let each provider use its own default. Discover all four MCP tools in the dashboard and get clearer engine status information.
+Limit web searches to a relative period or explicit dates. Rotation and failover now select providers that support the requested filter and configured access mode, without silently falling back to an unfiltered search.
 
 ### Added
 
-- Dashboard setting for a custom result count (1–20) or **Provider default**. Explicit `numResults` tool arguments take precedence. Existing and fresh configurations retain 8 until changed.
-- Provider-default mode omits the result-count parameter from upstream requests. Result counts can vary across rotation and failover; DuckDuckGo returns the results parsed from its HTML page, and Parallel hosted MCP uses its own result set.
-- English/German **MCP Tools** dashboard tab with parameter explanations and copyable examples.
+- `web_search` parameters: `timeRange` (`day`, `week`, `month`, `year`), `startDate`, and `endDate` (`YYYY-MM-DD`). Invalid calendar dates, reversed bounds, and mixing relative and explicit filters are rejected before provider requests.
+- Native date mapping for Tavily, Firecrawl, and Exa's direct API with a key. One-sided bounds use Tavily or keyed Exa; incompatible providers and access modes are skipped.
+- Separate rotation cursors for compatible provider pools, preserving quota priorities, cooldowns, strict-free rules, and failover.
+- Publication dates in search output when available, and the requested period in history.
+- Updated README and English/German dashboard tool help, with examples and the provider support matrix.
 
-### Improved
+### Date semantics
 
-- `engine_status` returns structured facts and equivalent JSON text. Configuration, per-capability key requirements, historical errors, local usage and provider account balances are clearly separated. This is not a live health check.
-- Provider icons are bundled locally, so dashboard logos no longer depend on external image requests.
-- README screenshots automatically follow light/dark mode and now display the real provider logos. The capture script checks that logos loaded successfully.
-- Firecrawl's omitted-count cost estimate uses its documented 10-result default (estimated 2 credits); explicit counts above 10 are estimated at 4 credits. Anonymous provider balances remain unknown.
+Relative windows resolve once per request into UTC dates, from 1/7/30/365 days ago through today. They have day precision, not rolling-hour precision. Provider semantics differ: Tavily can filter publication or update dates, Exa uses estimated publication dates, and Firecrawl uses its search index's date interpretation. Exact boundary inclusion follows the provider.
 
 ### Install or update
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.3
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.4.0
 ```
 
-Alternatively, install the prebuilt `search-rotation-0.3.3.tgz` release asset and verify it with `SHA256SUMS`. Distribution is through GitHub; no npm account is required.
+Alternatively, install the prebuilt `search-rotation-0.4.0.tgz` release asset and verify it with `SHA256SUMS`. Distribution is through GitHub; no npm account is required.
 
-Reconnect the MCP server in each harness after updating. Configuration, credentials and history are retained. The status tool's text format has changed to JSON; integrations parsing the previous human-readable lines should use `structuredContent` or the new JSON text.
+Reconnect the MCP server in each client after updating to load the new tool schema. Existing configuration, credentials, and history are retained. Searches without time arguments continue to use all otherwise eligible providers.
 
-Validation: 186 automated tests; TypeScript build; package installation and MCP handshake; browser checks of settings persistence, provider/custom modes, and desktop/mobile layouts; regenerated light/dark screenshots.
+Validation: 197 automated tests; TypeScript build; package installation and MCP handshake with all four tools; independent subagent review of the diff and official provider parameter documentation. Provider requests are covered by mocked wire tests; live filtering behavior and exact date boundaries remain to be validated against real results.
