@@ -53,7 +53,7 @@ try {
   browser = await chromium.launch({headless:true});
   const page = await browser.newPage({viewport:{width:1440,height:1440},deviceScaleFactor:1,locale:'en-US',colorScheme:'dark',reducedMotion:'reduce'});
   await page.clock.install({time:now});
-  // Only the loopback fixture is reachable. Provider icons use the UI's normal fallback.
+  // Only the loopback fixture is reachable, including its bundled provider icons.
   await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
   const errors=[]; page.on('pageerror',error=>errors.push(error.message));
   await page.goto(origin, {waitUntil:'networkidle'});
@@ -68,6 +68,11 @@ try {
     for (const theme of ['light', 'dark']) {
       if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('#theme-btn').click();
       await page.evaluate(() => window.scrollTo({top:0,behavior:'instant'}));
+      if (view === 'dashboard') {
+        const icons = page.locator('.logo-wrap img');
+        if (await icons.count() !== 4) throw new Error('Expected four actual provider logos, not letter fallbacks');
+        await icons.evaluateAll(images => Promise.all(images.map(image => image.decode())));
+      }
       const content = await page.locator('.page').boundingBox();
       const overview = view === 'dashboard' ? await page.locator('.two-col').boundingBox() : null;
       const clip = overview

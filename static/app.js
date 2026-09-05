@@ -94,20 +94,12 @@ function avatarStyle(id) {
   return "background:linear-gradient(135deg,hsl(" + h + " 62% 52%),hsl(" + ((h + 28) % 360) + " 68% 40%))";
 }
 
-/** Offizielles Favicon (aus der Homepage-URL); bei Load-Fehler ersetzt der delegierte
- *  error-Handler es durch den farbigen Buchstaben-Avatar. */
+/** Bundled provider favicon; the delegated error handler retains the letter fallback. */
 function engineLogoHtml(e) {
-  let domain = "";
-  try {
-    domain = new URL(e.homepage || "").hostname;
-  } catch {}
   const letter = esc((e.label || e.id)[0]);
-  if (!domain) return '<span class="avatar" style="' + avatarStyle(e.id) + '">' + letter + "</span>";
-  return (
-    '<span class="logo-wrap"><img class="logo" src="https://www.google.com/s2/favicons?domain=' +
-    encodeURIComponent(domain) +
-    '&sz=64" alt="" referrerpolicy="no-referrer" loading="lazy" data-fallback="' + letter + '" data-hue="' + engineHue(e.id) + '"></span>'
-  );
+  if (!Object.hasOwn(ENGINE_HUES, e.id)) return '<span class="avatar" style="' + avatarStyle(e.id) + '\">' + letter + "</span>";
+  return '<span class="logo-wrap"><img class="logo" src="/engine-logos/' + encodeURIComponent(e.id) +
+    '.png" alt="" loading="lazy" data-fallback="' + letter + '" data-hue="' + engineHue(e.id) + '\"></span>';
 }
 
 function pctClass(pct) {

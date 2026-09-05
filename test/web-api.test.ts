@@ -479,6 +479,18 @@ test("POST /api/test: kind außer fetch fällt auf search zurück", async () => 
 
 /* ---------- Statische Dateien & restliche Routen ---------- */
 
+test("provider logos are served locally as PNGs; unknown files stay inaccessible", async () => {
+  const { app } = makeApp();
+  for (const id of ["tavily", "firecrawl", "parallel", "exa", "google-cse", "jina", "duckduckgo"]) {
+    const response = await app.request(`/engine-logos/${id}.png`);
+    assert.equal(response.status, 200, id);
+    assert.equal(response.headers.get("content-type"), "image/png");
+    assert.deepEqual([...new Uint8Array(await response.arrayBuffer()).slice(0, 8)], [137,80,78,71,13,10,26,10]);
+  }
+  assert.equal((await app.request("/engine-logos/unknown.png")).status, 404);
+  assert.equal((await app.request("/engine-logos/README.md")).status, 404);
+});
+
 test("GET / liefert Dashboard-HTML mit id=\"lang\" und text/html", async () => {
   const { app } = makeApp();
   const res = await app.request("/");
