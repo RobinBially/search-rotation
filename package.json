@@ -1,6 +1,6 @@
 {
   "name": "search-rotation",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Round-robin web search over the free tiers of multiple search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina, DuckDuckGo) as an MCP server \u2014 with a local dashboard for API keys, engine order/toggles and live quota status.",
   "type": "module",
   "license": "MIT",
@@ -43,7 +43,7 @@
     "smoke:package": "node scripts/smoke-package.mjs"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.0",
+    "@hono/node-server": "^2.1.1",
     "@modelcontextprotocol/sdk": "^1.17.0",
     "hono": "^4.9.0",
     "zod": "^4.5.4"
