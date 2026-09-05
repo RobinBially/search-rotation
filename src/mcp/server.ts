@@ -3,6 +3,15 @@ import { z } from "zod";
 import { RouterError, type SearchRouter } from "../router.js";
 import type { StatusRow } from "../status.js";
 import { VERSION } from "../version.js";
+import { readFileSync } from "node:fs";
+
+// Inline packaged icons: clients need no dashboard connection or external image host.
+const icons = (["light", "dark"] as const).map(theme => ({
+  src: `data:image/png;base64,${readFileSync(new URL(`../../docs/assets/brand/icon-${theme}-128.png`, import.meta.url)).toString("base64")}`,
+  mimeType: "image/png",
+  sizes: ["128x128"],
+  theme,
+}));
 
 export interface McpDeps {
   router: SearchRouter;
@@ -26,7 +35,7 @@ async function withRouterDiagnostics<T>(operation: Promise<T>): Promise<T> {
 }
 
 export function buildMcpServer(deps: McpDeps): McpServer {
-  const server = new McpServer({ name: "search-rotation", version: VERSION });
+  const server = new McpServer({ name: "search-rotation", version: VERSION, icons });
 
   server.registerTool(
     "web_search",

@@ -1,4 +1,7 @@
-# search-rotation
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/wordmark-dark.svg">
+  <img src="docs/assets/brand/wordmark-light.svg" width="376" alt="search-rotation">
+</picture>
 
 **One MCP server for web search and page extraction across multiple providers.**
 
@@ -12,13 +15,13 @@ Rotate across available quotas, automatically fail over when a provider is unava
 Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.1
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.2
 ```
 
 To preview the dashboard:
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.1 --http --open
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.2 --http --open
 ```
 
 Add your provider keys in the dashboard, then connect your assistant using the **[MCP client setup guide](docs/clients.md)** for Codex, Claude, Cursor, or OpenCode.

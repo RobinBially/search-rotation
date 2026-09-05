@@ -31,6 +31,9 @@ try {
   client = new Client({ name: 'package-smoke-test', version: '1.0.0' });
   await client.connect(transport, { timeout: 10_000 });
   assert.equal(client.getServerVersion()?.version, expected);
+  const icons = client.getServerVersion()?.icons;
+  assert.deepEqual(icons?.map(icon => icon.theme), ['light', 'dark']);
+  assert.ok(icons.every(icon => icon.mimeType === 'image/png' && icon.src.startsWith('data:image/png;base64,')), 'packaged server icons missing');
   const list = await client.listTools();
   assert.deepEqual(list.tools.map(tool => tool.name).sort(), ['engine_status', 'fetch_url', 'open_dashboard', 'web_search']);
   console.log(`Installed package v${expected}: MCP handshake and all four tools OK.`);

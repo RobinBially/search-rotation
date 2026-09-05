@@ -126,6 +126,23 @@ function text(result: unknown): string {
 
 // ---------------------------------------------------------------- Tests
 
+test("initialize advertises self-contained dashboard icons for both themes", async () => {
+  const { deps } = fakeDeps(searchRouter([adapter("a", { search: async () => ({ items: [] }) })]));
+  const client = await connect(deps);
+  try {
+    const icons = client.getServerVersion()?.icons;
+    assert.equal(icons?.length, 2);
+    assert.deepEqual(icons?.map(icon => icon.theme), ["light", "dark"]);
+    for (const icon of icons ?? []) {
+      assert.equal(icon.mimeType, "image/png");
+      assert.deepEqual(icon.sizes, ["128x128"]);
+      assert.ok(icon.src.startsWith("data:image/png;base64,"));
+      const bytes = Buffer.from(icon.src.split(",")[1], "base64");
+      assert.equal(bytes.subarray(1, 4).toString(), "PNG");
+    }
+  } finally { await client.close(); }
+});
+
 test("tools/list: alle vier Tools mit korrekten Schemata", async () => {
   const { deps } = fakeDeps(searchRouter([adapter("a", { search: async () => ({ items: [] }) })]));
   const client = await connect(deps);
