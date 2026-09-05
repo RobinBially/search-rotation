@@ -17,6 +17,8 @@ export interface Settings {
   dailyLimits?: Record<string, number>;
   strictFreeMode?: boolean;
   requestTimeoutMs?: number;
+  /** null delegates result count to the provider; absent preserves legacy default 8. */
+  defaultNumResults?: number | null;
 }
 
 export interface PolyConfig {
@@ -106,6 +108,7 @@ export function normalizeConfig(raw: unknown, d: ConfigDefaults): PolyConfig {
       monthlyLimits,
       dailyLimits: Object.fromEntries(Object.entries(s.dailyLimits ?? {}).filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0)) as Record<string, number>,
       strictFreeMode: s.strictFreeMode === true,
+      defaultNumResults: s.defaultNumResults === null ? null : Number.isInteger(s.defaultNumResults) && s.defaultNumResults >= 1 && s.defaultNumResults <= 20 ? s.defaultNumResults : 8,
       requestTimeoutMs: Number.isInteger(s.requestTimeoutMs) && s.requestTimeoutMs >= 1000 && s.requestTimeoutMs <= 300_000 ? s.requestTimeoutMs : 60_000,
     },
   };

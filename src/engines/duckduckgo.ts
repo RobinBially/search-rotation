@@ -1,5 +1,5 @@
 import type { EngineAdapter, EngineContext, SearchInput, SearchItem, SearchOutcome } from "../types.js";
-import { cap, HttpError } from "./base.js";
+import { optionalCap as cap, HttpError } from "./base.js";
 
 const ENTITIES: Record<string, string> = {
   amp: "&",

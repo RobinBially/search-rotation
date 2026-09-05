@@ -1,5 +1,5 @@
 import type { EngineAdapter, EngineContext, FetchInput, RemoteQuota, SearchInput, SearchOutcome } from "../types.js";
-import { bearer, cap, httpJson } from "./base.js";
+import { bearer, optionalCap as cap, httpJson } from "./base.js";
 
 const BASE = "https://api.firecrawl.dev/v2";
 
@@ -78,7 +78,9 @@ export const FIRECRAWL: EngineAdapter = {
     notes:
       "Gratis-Guthaben mit Konto; kein garantierter monatlicher Reset. Quota per API abrufbar; Reset nach Billing-Periode (Kontostand zählt Remote), nicht am Kalendermonat. Ohne Key nur wenige IP-basierte Requests.",
   },
-  estimateCost: (kind, input) => kind === "search" ? 2 * Math.ceil(cap((input as SearchInput).numResults) / 10) : 1,
+  // Documented Firecrawl v2 default: 10 results (docs.firecrawl.dev/api-reference/endpoint/search).
+  // Cost remains an estimate; do not substitute our dashboard default here.
+  estimateCost: (kind, input) => kind === "search" ? 2 * Math.ceil((cap((input as SearchInput).numResults) ?? 10) / 10) : 1,
   search,
   fetchUrl,
   remoteQuota,

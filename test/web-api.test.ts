@@ -538,3 +538,18 @@ test("GET /api/status und /api/meta nutzen die injizierten Deps", async () => {
   assert.equal(body.engines[0].id, "tavily");
   assert.equal(body.engines[0].remainingPct, 99);
 });
+
+test('result-count settings persist null and numbers, reject invalid values and preserve omitted settings', async () => {
+ const {deps,app}=makeApp();
+ for(const value of [null,12,1,20]) {
+  const res=await app.request('/api/config',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({engines:[],settings:{defaultNumResults:value}})});
+  assert.equal(res.status,200);assert.equal(deps.saved.settings.defaultNumResults,value);
+  assert.equal((await (await app.request('/api/config')).json()).settings.defaultNumResults,value);
+ }
+ for(const value of [0,21,1.5,'provider','',false]) {
+  assert.equal((await app.request('/api/config',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({engines:[],settings:{defaultNumResults:value}})})).status,400);
+  assert.equal(deps.saved.settings.defaultNumResults,20);
+ }
+ await app.request('/api/config',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({engines:[]})});
+ assert.equal(deps.saved.settings.defaultNumResults,20);
+});

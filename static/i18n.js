@@ -4,6 +4,11 @@
 
 window.I18N = {
   de: {
+    "settings.resultsHelp": "Eine explizite Anzahl im Tool-Aufruf hat Vorrang. Anbieterstandard lässt die Anzahl offen; Trefferzahl und Kosten können je nach Engine variieren. Firecrawl: geschätzt 2 Credits bis 10 Ergebnisse, 4 ab 11. Ohne API-Key bleiben Anbieterlimits unbekannt.",
+    "settings.resultsCount": "Ergebnisanzahl (1–20)",
+    "settings.resultsProvider": "Anbieterstandard",
+    "settings.resultsCustom": "Eigene Vorgabe",
+    "settings.results": "Standard-Ergebnisanzahl",
     "nav.tools": "MCP Tools",
     "tools.title": "MCP Tools",
     "tools.sub": "Vier Werkzeuge, die dein KI-Assistent aufrufen kann",
@@ -17,7 +22,7 @@ window.I18N = {
     "tools.example": "Beispielaufruf",
     "tools.copy": "Beispiel für {name} kopieren",
     "tools.param.query": "Erforderlich · Suchbegriff als Text.",
-    "tools.param.count": "Optional · 1–20 Ergebnisse, Standard: 8.",
+    "tools.param.count": "Optional · 1–20 Ergebnisse. Ohne Angabe gilt die Dashboard-Vorgabe (anfangs 8) oder der Anbieterstandard.",
     "tools.param.engine": "Optional · Bevorzugte Engine-ID, z. B. tavily. Fallback auf andere Anbieter bleibt aktiv.",
     "tools.param.url": "Erforderlich · Vollständige URL der Webseite.",
 
@@ -136,6 +141,11 @@ window.I18N = {
   },
 
   en: {
+    "settings.resultsHelp": "An explicit count in the tool call takes priority. Provider default omits the count; results and costs may vary by engine. Firecrawl: estimated 2 credits up to 10 results, 4 from 11. Without an API key, provider limits remain unknown.",
+    "settings.resultsCount": "Result count (1–20)",
+    "settings.resultsProvider": "Provider default",
+    "settings.resultsCustom": "Custom count",
+    "settings.results": "Default result count",
     "nav.tools": "MCP Tools",
     "tools.title": "MCP Tools",
     "tools.sub": "Four tools your AI assistant can call",
@@ -149,7 +159,7 @@ window.I18N = {
     "tools.example": "Example call",
     "tools.copy": "Copy example for {name}",
     "tools.param.query": "Required · Search query as text.",
-    "tools.param.count": "Optional · 1–20 results, default: 8.",
+    "tools.param.count": "Optional · 1–20 results. Omit to use the dashboard setting (initially 8) or the provider default.",
     "tools.param.engine": "Optional · Preferred engine ID, e.g. tavily. Fallback to other providers remains enabled.",
     "tools.param.url": "Required · Full webpage URL.",
 

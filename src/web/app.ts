@@ -40,6 +40,7 @@ function publicConfig(cfg: PolyConfig, adapters: EngineAdapter[]) {
     }),
     fetchOrder: cfg.fetchOrder,
     settings: { port: cfg.settings.port, tokenSet: Boolean(cfg.settings.token),
+      defaultNumResults: cfg.settings.defaultNumResults === undefined ? 8 : cfg.settings.defaultNumResults,
       strictFreeMode: cfg.settings.strictFreeMode ?? false, requestTimeoutMs: cfg.settings.requestTimeoutMs ?? 60_000,
       monthlyLimits: cfg.settings.monthlyLimits, dailyLimits: cfg.settings.dailyLimits ?? {} },
     enginesMeta: adapters.map((a) => a.meta),
@@ -139,6 +140,11 @@ export function buildWebApp(deps: WebDeps) {
       settings.port = body.settings.port;
     }
     if (typeof body.settings?.strictFreeMode === "boolean") settings.strictFreeMode = body.settings.strictFreeMode;
+    if (body.settings && Object.hasOwn(body.settings, "defaultNumResults")) {
+      const value = body.settings.defaultNumResults;
+      if (value !== null && !(Number.isInteger(value) && value >= 1 && value <= 20)) return c.json({ error: "defaultNumResults must be null (provider default) or an integer from 1 to 20" }, 400);
+      settings.defaultNumResults = value;
+    }
     if (Number.isInteger(body.settings?.requestTimeoutMs) && body.settings.requestTimeoutMs >= 1000 && body.settings.requestTimeoutMs <= 300_000) settings.requestTimeoutMs = body.settings.requestTimeoutMs;
     for (const field of ["dailyLimits", "monthlyLimits"] as const) {
       const limits = body.settings?.[field];

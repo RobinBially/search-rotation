@@ -1,5 +1,5 @@
 import type { EngineAdapter, EngineContext, SearchInput, SearchOutcome } from "../types.js";
-import { cap, httpJson, NeedsKeyError } from "./base.js";
+import { optionalCap as cap, httpJson, NeedsKeyError } from "./base.js";
 
 const SIGNUP = "https://developers.google.com/custom-search/v1/overview";
 
@@ -11,7 +11,7 @@ async function search(input: SearchInput, ctx: EngineContext): Promise<SearchOut
   url.searchParams.set("key", ctx.apiKey);
   url.searchParams.set("cx", cx);
   url.searchParams.set("q", input.query);
-  url.searchParams.set("num", String(Math.min(cap(input.numResults), 10)));
+  if (input.numResults !== undefined) url.searchParams.set("num", String(Math.min(cap(input.numResults)!, 10)));
   const j = await httpJson<any>(url.toString(), {}, { signal: ctx.signal });
   if (j?.error?.message) throw new Error(`google-cse: ${j.error.message}`);
   const items = (Array.isArray(j?.items) ? j.items : []).map((r: any) => ({

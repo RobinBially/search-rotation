@@ -46,7 +46,7 @@ export function buildMcpServer(deps: McpDeps): McpServer {
         "Web search with automatic round-robin across multiple free search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, DuckDuckGo) including transparent failover. Returns numbered results with title, URL and snippet.",
       inputSchema: {
         query: z.string().describe("Search query"),
-        numResults: z.number().int().min(1).max(20).optional().describe("Number of results (default 8)"),
+        numResults: z.number().int().min(1).max(20).optional().describe("Optional result count (1–20). Omit to use the dashboard setting: a custom count or the provider default."),
         engine: z.string().optional().describe("Preferred engine id; failover to the other engines stays active"),
       },
     },

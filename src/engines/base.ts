@@ -76,3 +76,8 @@ function safeHost(url: string): string {
     return url;
   }
 }
+
+/** Undefined means the provider chooses, including no local result slicing. */
+export function optionalCap(n: number | undefined): number | undefined {
+  return n === undefined ? undefined : cap(n);
+}

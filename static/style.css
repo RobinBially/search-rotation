@@ -1211,3 +1211,7 @@ a.signup:hover { text-decoration: underline; }
 .two-col > .panel, .health-card { min-width: 0; }
 .panel-head { flex-wrap: wrap; }
 @media(max-width:480px) { .health-grid { grid-template-columns: minmax(0, 1fr); } .btn, .drawer-toggle, .nav-tab, .icon-btn { min-height: 44px; } }
+
+.result-settings { margin: 18px 0; }
+.result-settings select { max-width: 100%; }
+#result-count { width: 84px; }

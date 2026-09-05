@@ -1,5 +1,5 @@
 import type { EngineAdapter, EngineContext, FetchInput, RemoteQuota, SearchInput, SearchOutcome } from "../types.js";
-import { bearer, cap, httpJson, NeedsKeyError } from "./base.js";
+import { bearer, optionalCap as cap, httpJson, NeedsKeyError } from "./base.js";
 
 const SIGNUP = "https://app.tavily.com";
 const BASE = "https://api.tavily.com";

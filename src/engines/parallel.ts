@@ -1,5 +1,5 @@
 import type { EngineAdapter, EngineContext, FetchInput, SearchInput, SearchOutcome } from "../types.js";
-import { cap, httpJson, NeedsKeyError } from "./base.js";
+import { optionalCap as cap, httpJson, NeedsKeyError } from "./base.js";
 
 import { withHostedMcp } from "./hosted-mcp.js";
 

@@ -1,5 +1,5 @@
 import type { EngineAdapter, EngineContext, FetchInput, SearchInput, SearchItem, SearchOutcome } from "../types.js";
-import { cap, httpJson } from "./base.js";
+import { optionalCap as cap, httpJson } from "./base.js";
 import { withHostedMcp } from "./hosted-mcp.js";
 
 const SIGNUP = "https://dashboard.exa.ai";

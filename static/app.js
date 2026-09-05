@@ -519,6 +519,10 @@ function settingsHtml() {
     '<p class="muted">' + esc(t("settings.strictHelp")) + '</p>' +
     '<label for="request-timeout">' + esc(t("settings.timeout")) + '</label> ' +
     '<input id="request-timeout" type="number" min="1000" max="300000" step="1000" value="' + (settings.requestTimeoutMs ?? 60000) + '">' +
+    '<div class="result-settings"><label for="result-count-mode">' + esc(t("settings.results")) + '</label> ' +
+    '<select id="result-count-mode"><option value="custom"' + (settings.defaultNumResults !== null ? ' selected' : '') + '>' + esc(t("settings.resultsCustom")) + '</option><option value="provider"' + (settings.defaultNumResults === null ? ' selected' : '') + '>' + esc(t("settings.resultsProvider")) + '</option></select> ' +
+    '<input id="result-count" aria-label="' + esc(t("settings.resultsCount")) + '" type="number" required min="1" max="20" step="1" value="' + (settings.defaultNumResults ?? 8) + '"' + (settings.defaultNumResults === null ? ' disabled hidden' : '') + '>' +
+    '<p class="muted">' + esc(t("settings.resultsHelp")) + '</p></div>' +
     '<button class="btn" data-act="save-settings">' + esc(t("btn.save")) + '</button></div>';
 }
 
@@ -528,6 +532,8 @@ function renderEngines() {
   const saved = {};
   const strictDraft = wrap.querySelector("#strict-free")?.checked;
   const timeoutDraft = wrap.querySelector("#request-timeout")?.value;
+  const resultsModeDraft = wrap.querySelector("#result-count-mode")?.value;
+  const resultsCountDraft = wrap.querySelector("#result-count")?.value;
   wrap.querySelectorAll(".keyinput").forEach((el) => {
     if (el.value) saved["key:" + el.dataset.id] = el.value;
   });
@@ -597,6 +603,12 @@ function renderEngines() {
   // Gesicherte Eingaben zurückschreiben
   if (strictDraft !== undefined) wrap.querySelector("#strict-free").checked = strictDraft;
   if (timeoutDraft !== undefined) wrap.querySelector("#request-timeout").value = timeoutDraft;
+  if (resultsModeDraft !== undefined) {
+    wrap.querySelector("#result-count-mode").value = resultsModeDraft;
+    const field = wrap.querySelector("#result-count");
+    field.value = resultsCountDraft;
+    field.disabled = field.hidden = resultsModeDraft === "provider";
+  }
   wrap.querySelectorAll(".keyinput").forEach((el) => {
     const v = saved["key:" + el.dataset.id];
     if (v) el.value = v;
@@ -866,11 +878,15 @@ document.addEventListener("click", async (ev) => {
   if (ev.target.closest('[data-act="save-settings"]')) {
     const timeoutInput = $("#request-timeout");
     if (!timeoutInput.checkValidity()) { timeoutInput.reportValidity(); return; }
+    const providerDefault = $("#result-count-mode").value === "provider";
+    const countInput = $("#result-count");
+    if (!providerDefault && !countInput.checkValidity()) { countInput.reportValidity(); return; }
+    const defaultNumResults = providerDefault ? null : Number(countInput.value);
     const strictFreeMode = $("#strict-free").checked;
     const requestTimeoutMs = Number(timeoutInput.value);
     await queuePut((cfg) => ({
       engines: cfg.engines.map((e) => ({ id: e.id, enabled: e.enabled })),
-      settings: { strictFreeMode, requestTimeoutMs },
+      settings: { strictFreeMode, requestTimeoutMs, defaultNumResults },
     }));
     return;
   }
@@ -1118,4 +1134,11 @@ applyI18n();
 setRoute(parseHash());
 load().catch((e) => {
   if (e.message !== "unauthorized") toast("error", t("toast.error", { msg: e.message }));
+});
+
+// Keep the numeric input out of the provider-default mode.
+document.addEventListener("change", ev => {
+  if (ev.target.id !== "result-count-mode") return;
+  const field = $("#result-count");
+  field.disabled = field.hidden = ev.target.value === "provider";
 });

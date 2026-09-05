@@ -93,12 +93,13 @@ test("Settings speichern Strict-Free und Gesamttimeout ohne andere Engine-Änder
   const h = harness();
   const sent: any[] = [];
   h.context.api = async (_: string, opts: any) => {sent.push(structuredClone(opts.body)); return {config:opts.body};};
-  h.context.document.querySelector = (selector: string) => selector === "#strict-free" ? {checked:true} : selector === "#request-timeout" ? {value:"45000",checkValidity:()=>true} : h.view;
+  h.context.document.querySelector = (selector: string) => selector === "#strict-free" ? {checked:true} : selector === "#request-timeout" ? {value:"45000",checkValidity:()=>true} : selector === "#result-count-mode" ? {value:"custom"} : selector === "#result-count" ? {value:"12",checkValidity:()=>true} : h.view;
   const button = {};
   for (const handler of h.listeners.get("click")!) await handler({target:{closest:(selector:string)=>selector === '[data-act="save-settings"]' ? button : null}});
   await h.run("putChain");
   assert.equal(sent[0]?.settings.strictFreeMode, true);
   assert.equal(sent[0]?.settings.requestTimeoutMs, 45000);
+  assert.equal(sent[0]?.settings.defaultNumResults, 12);
   assert.deepEqual(sent[0].engines.map((e:any)=>e.id), ["a","b"]);
 });
 

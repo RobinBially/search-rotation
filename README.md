@@ -19,13 +19,13 @@ Rotate across available quotas, automatically fail over when a provider is unava
 Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.2
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.3
 ```
 
 To preview the dashboard:
 
 ```sh
-npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.2 --http --open
+npx -y --allow-git=all github:RobinBially/search-rotation#v0.3.3 --http --open
 ```
 
 Add your provider keys in the dashboard, then connect your assistant using the **[MCP client setup guide](docs/clients.md)** for Codex, Claude, Cursor, or OpenCode.
@@ -50,7 +50,7 @@ The dashboard's **MCP Tools** tab explains each tool, its parameters, and copyab
   <img src="docs/assets/mcp-tools-light.png" alt="MCP Tools overview with parameters and example calls for all four tools">
 </picture>
 
-*Actual dashboard UI, shown in English. Available in the upcoming release.*
+*Actual dashboard UI, shown in English.*
 
 ## Learn more
 

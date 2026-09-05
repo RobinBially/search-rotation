@@ -144,7 +144,9 @@ export class SearchRouter {
   }
 
   async search(input: SearchInput, opts: RouterOptions = {}): Promise<SearchResponse> {
-    const { value, engine, attempts } = await this.execute('search', input, opts);
+    const configured = this.opts.getConfig().settings.defaultNumResults;
+    const numResults = input.numResults ?? (configured === null ? undefined : configured ?? 8);
+    const { value, engine, attempts } = await this.execute('search', { ...input, numResults }, opts);
     return { ...(value as SearchOutcome), engine, attempts };
   }
   async fetchUrl(input: FetchInput, opts: RouterOptions = {}): Promise<FetchResponse> {
