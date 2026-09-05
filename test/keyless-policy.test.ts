@@ -56,5 +56,10 @@ test('Keyless search-only providers are skipped during fetch and expose only ava
  const router=new SearchRouter({getConfig:()=>cfg,usage,adapters});
  assert.equal((await router.fetchUrl({url:'https://example.com'})).engine,'jina');assert.equal(forbidden,0);
  const status=await buildStatus(cfg,usage,adapters);
- for(const id of ['tavily','parallel'])assert.deepEqual(status.find(r=>r.id===id)!.capabilities,['search']);
+ for(const id of ['tavily','parallel']) {
+   const row = status.find(r=>r.id===id)!;
+   assert.deepEqual(row.capabilities,['search']);
+   assert.deepEqual(row.keylessCapabilities,['search']);
+   assert.ok(row.supportedCapabilities?.includes('fetch'));
+ }
 });

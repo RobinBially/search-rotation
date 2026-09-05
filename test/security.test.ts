@@ -173,16 +173,28 @@ test('MCP status reports quota period, units, source and estimates', async () =>
         { label: 'Daily', quota: { period: 'day', unit: 'requests', limit: 100, used: 12, source: 'local', estimated: true, timeZone: 'America/Los_Angeles' } },
         { label: 'Monthly', quota: { period: 'month', unit: 'credits', limit: 1000, used: 2.5, source: 'remote', estimated: false } },
         { label: 'Keyless', quota: { period: 'ip', unit: 'requests', limit: null, used: null, source: 'unknown', estimated: true } },
-    ].map(row => ({ ...row, enabled: true, keyless: 'ip', hasKey: false, searchPosition: 0, used: { search: 999, fetch: 0 }, monthlyLimit: 3000 }));
+    ].map(row => ({ ...row, enabled: true, capabilities: ['search'], keyless: 'ip', hasKey: row.label !== 'Keyless', searchPosition: 0, used: { search: 999, fetch: 0 }, monthlyLimit: 3000 }));
     const server = buildMcpServer({ router: {} as never, status: async () => rows as never, month: () => '', dashboardUrl: () => null, openDashboard: () => {} });
     const client = new Client({ name: 'test', version: '1' });
     const [a,b] = InMemoryTransport.createLinkedPair();await server.connect(a);await client.connect(b);
     try {
         const result = await client.callTool({ name: 'engine_status', arguments: {} });
-        const text = JSON.stringify(result.content);
-        assert.match(text,/12\/100 Requests\/Tag.*lokal.*geschätzt.*America\/Los_Angeles/);
-        assert.match(text,/2.5\/1000 Credits\/Monat.*remote/);
-        assert.match(text,/999 erfolgreiche Aufrufe.*lokal.*IP-Limit und Anbieter-Gesamtverbrauch unbekannt/);
-        assert.doesNotMatch(text,/999\/3000/);
+        const data = result.structuredContent as any;
+        const [daily, monthly, keyless] = data.engines;
+        assert.equal(daily.quota.used, 12);
+        assert.equal(daily.quota.limit, 100);
+        assert.equal(daily.quota.period, 'day');
+        assert.equal(daily.quota.unit, 'requests');
+        assert.equal(daily.quota.source, 'local');
+        assert.equal(daily.quota.estimated, true);
+        assert.equal(daily.quota.timeZone, 'America/Los_Angeles');
+        assert.equal(monthly.quota.used, 2.5);
+        assert.equal(monthly.quota.unit, 'credits');
+        assert.equal(monthly.quota.source, 'remote');
+        assert.equal(monthly.quota.scope, 'provider_account_balance');
+        assert.equal(monthly.quota.period, null);
+        assert.equal(keyless.localUsage.successfulSearches, 999);
+        assert.equal(keyless.quota.limit, null);
+        assert.equal(keyless.quota.providerTotalUsed, null);
     } finally { await client.close();await server.close(); }
 });

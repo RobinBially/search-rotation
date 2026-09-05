@@ -11,6 +11,8 @@ export interface StatusRow {
   homepage: string;
   signupUrl: string;
   capabilities: string[];
+  supportedCapabilities?: string[];
+  keylessCapabilities?: string[];
   keyless: "no" | "ip";
   notes?: string;
   extraFields: { key: string; label: string }[];
@@ -141,6 +143,8 @@ export async function buildStatus(
       homepage: meta.homepage,
       signupUrl: meta.signupUrl,
       capabilities: !e?.apiKey && meta.keylessCapabilities ? meta.keylessCapabilities : meta.capabilities,
+      supportedCapabilities: meta.capabilities,
+      keylessCapabilities: meta.keyless === "ip" ? meta.keylessCapabilities ?? meta.capabilities : [],
       keyless: meta.keyless,
       notes: meta.notes,
       extraFields: meta.extraFields ?? [],

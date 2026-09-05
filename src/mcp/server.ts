@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { RouterError, type SearchRouter } from "../router.js";
 import type { StatusRow } from "../status.js";
+import { engineStatus } from "./engine-status.js";
 import { VERSION } from "../version.js";
 import { readFileSync } from "node:fs";
 
@@ -91,41 +92,16 @@ export function buildMcpServer(deps: McpDeps): McpServer {
     "engine_status",
     {
       title: "Engine Status",
+      annotations: { readOnlyHint: true, destructiveHint: false },
       description:
-        "Show every search engine: enabled state, rotation position, remaining free quota (local counter plus provider quota API when available), key status and last errors.",
+        "Read engine configuration, per-capability authentication requirements, local usage and quota sources. This is not a live health check. Historical errors do not prove a current failure; disabled engines are not necessarily missing credentials.",
       inputSchema: {},
     },
     async () => {
-      const rows = await deps.status();
-      const lines = rows.map((row) => {
-        const state = row.enabled ? "aktiv" : "aus";
-        let quota = "kein festes Limit";
-        if (row.quota) {
-          const q = row.quota;
-          const unit = q.unit === "credits" ? "Credits" : "Requests";
-          const period = q.period === "day" ? "Tag" : "Monat";
-          const source = q.source === "local" ? "lokal" : q.source === "remote" ? "remote" : "Quelle unbekannt";
-          const details = [source, ...(q.estimated ? ["geschätzt"] : []), ...(q.timeZone ? [q.timeZone] : [])].join(", ");
-          quota = q.period === "ip"
-            ? `${row.used.search + row.used.fetch} erfolgreiche Aufrufe/Monat (lokal); IP-Limit und Anbieter-Gesamtverbrauch unbekannt`
-            : `${q.used ?? "?"}/${q.limit ?? "unbekannt"} ${unit}/${period} (${details})`;
-        } else if (row.remote?.limit) {
-          quota = `remote: ${row.remote.used ?? "?"}/${row.remote.limit}`;
-        } else if (row.monthlyLimit > 0) {
-          quota = `${row.used.search + row.used.fetch}/${row.monthlyLimit} (lokal gezählt)`;
-        }
-        const key = row.hasKey
-          ? `key ${row.keyMasked}`
-          : row.keyless === "ip"
-            ? "ohne Key (IP-basiert)"
-            : "KEIN KEY";
-        const warn = row.lastError ? ` | letzter Fehler: ${row.lastError.slice(0, 120)}` : "";
-        return `${row.searchPosition + 1}. ${row.label} — ${state}, Quota: ${quota}, ${key}${warn}`;
-      });
+      const status = engineStatus(await deps.status(), deps.month(), VERSION);
       return {
-        content: [
-          { type: "text", text: [`search-rotation v${VERSION} — Engine-Status (Monat ${deps.month()})`, "", ...lines].join("\n") },
-        ],
+        structuredContent: status,
+        content: [{ type: "text", text: JSON.stringify(status, null, 2) }],
       };
     },
   );

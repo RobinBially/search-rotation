@@ -286,41 +286,43 @@ test("fetch_url: genau 50.000 Zeichen werden nicht gekürzt", async () => {
   assert.equal(t.length, "Fetched https://example.com via b".length + 2 + 50_000);
 });
 
-test("engine_status: Engine-Zeilen mit Position, lokal gezählter Quota und KEIN-KEY-Markierung", async () => {
-  const rows: StatusRow[] = [
-    statusRow({
-      lastError: "2026-09-01T10:00:00.000Z: 429 zu viele Anfragen",
-      used: { search: 12, fetch: 3, errors: 1, lastError: "2026-09-01T10:00:00.000Z: 429 zu viele Anfragen" },
-    }),
-    statusRow({
-      id: "exa",
-      label: "Exa",
-      keyless: "ip",
-      enabled: false,
-      searchPosition: 1,
-      used: { search: 0, fetch: 0, errors: 0 },
-    }),
-    statusRow({
-      id: "firecrawl",
-      label: "Firecrawl",
-      searchPosition: 2,
-      hasKey: true,
-      keyMasked: "fc-ab…cd12",
-      remote: { used: 500, limit: 1000 },
-      used: { search: 99, fetch: 1, errors: 0 },
-    }),
+test("engine_status distinguishes disabled configuration, keyless search and historical errors", async () => {
+  const rows = [
+    statusRow({ id: "duckduckgo", label: "DuckDuckGo", keyless: "ip", enabled: false, capabilities: ["search"] }),
+    statusRow({ keyless: "ip", capabilities: ["search"], supportedCapabilities: ["search", "fetch"], keylessCapabilities: ["search"],
+      lastError: "2026-09-01T10:00:00.000Z: API key required", used: { search: 12, fetch: 0, errors: 1 } }),
+    statusRow({ id: "google-cse", label: "Google", capabilities: ["search"], extraFields: [{ key: "cx", label: "Search engine ID" }], extrasSet: { cx: false } }),
+    statusRow({ id: "firecrawl", label: "Firecrawl", keyless: "ip", hasKey: true, keyMasked: "fc-secret-fragment", quota: { period: "month", unit: "credits", used: 182, limit: 1000, source: "remote", estimated: false } }),
   ];
   const { deps } = fakeDeps(searchRouter([adapter("a", { search: async () => ({ items: [] }) })]), rows);
   const client = await connect(deps);
-
-  const r = await client.callTool({ name: "engine_status", arguments: {} });
-  assert.notEqual(r.isError, true);
-  const t = text(r);
-  assert.match(t, /search-rotation v\d[^\n]*— Engine-Status \(Monat 2026-09\)/);
-  assert.match(t, /1\. Tavily — aktiv, Quota: 15\/1000 \(lokal gezählt\), KEIN KEY \| letzter Fehler: .*429 zu viele Anfragen/);
-  assert.match(t, /2\. Exa — aus, Quota: 0\/1000 \(lokal gezählt\), ohne Key \(IP-basiert\)/);
-  assert.match(t, /3\. Firecrawl — aktiv, Quota: remote: 500\/1000, key fc-ab…cd12/);
-  assert.ok(t.includes("KEIN KEY"));
+  try {
+    const result = await client.callTool({ name: "engine_status", arguments: {} });
+    assert.notEqual(result.isError, true);
+    const data = result.structuredContent as any;
+    assert.deepEqual(JSON.parse(text(result)), data, "text-only clients receive the same facts");
+    const [ddg, tavily, google, firecrawl] = data.engines;
+    assert.equal(ddg.enabled, false);
+    assert.equal(ddg.disabledReason, "disabled_in_configuration; original reason not recorded");
+    assert.equal(ddg.access.search.mode, "keyless");
+    assert.equal(ddg.access.search.includedInRotation, false);
+    assert.equal(tavily.access.search.mode, "keyless");
+    assert.equal(tavily.access.search.includedInRotation, true);
+    assert.equal(tavily.access.fetch.mode, "api_key_required");
+    assert.equal(tavily.access.fetch.includedInRotation, false);
+    assert.equal(tavily.diagnostics.lastRecordedError, rows[1].lastError);
+    assert.equal(tavily.diagnostics.currentHealth, "not_tested");
+    assert.equal(tavily.quota.limit, null);
+    assert.equal(tavily.quota.providerTotalUsed, null);
+    assert.equal(tavily.localUsage.successfulSearches, 12);
+    assert.equal(google.access.search.mode, "api_key_required");
+    assert.deepEqual(google.missingExtraConfiguration, ["cx"]);
+    assert.equal(firecrawl.access.search.mode, "configured_key");
+    assert.equal(firecrawl.quota.scope, "provider_account_balance");
+    assert.equal(firecrawl.quota.period, null);
+    assert.doesNotMatch(text(result), /fc-secret-fragment/);
+    assert.match(data.interpretation.join(" "), /Historical errors.*current failure/);
+  } finally { await client.close(); }
 });
 
 test("open_dashboard: ruft den Opener auf und nennt die URL", async () => {

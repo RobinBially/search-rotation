@@ -4,6 +4,23 @@
 
 window.I18N = {
   de: {
+    "nav.tools": "MCP Tools",
+    "tools.title": "MCP Tools",
+    "tools.sub": "Vier Werkzeuge, die dein KI-Assistent aufrufen kann",
+    "tools.intro": "Beschreibe deinem Assistenten einfach, was du brauchst. Er ruft das passende Tool auf. Die Beispiele zeigen Toolname und Argumente; Kopieren führt keinen Aufruf aus.",
+    "tools.web_search": "Sucht im Web und gibt Titel, URLs und Textauszüge zurück. Rotiert automatisch zwischen Engines und wechselt bei Fehlern zum nächsten Anbieter.",
+    "tools.fetch_url": "Ruft eine bestimmte Webseite ab und gibt ihren Inhalt als Markdown zurück. Nutzt eine eigene Anbieter-Rotation für die Textextraktion.",
+    "tools.engine_status": "Zeigt Aktivierung, Zugang pro Funktion, lokale Nutzung und Kontingente. Fehlende Keys sind nicht automatisch ein Problem: Einige Funktionen gehen keyless. Gespeicherte Fehler sind historisch; dies ist kein Live-Funktionstest.",
+    "tools.open_dashboard": "Öffnet dieses Dashboard im Browser des Rechners, auf dem der Server läuft. Bei einem entfernten Server öffnet es nicht automatisch deinen lokalen Browser.",
+    "tools.parameters": "Parameter",
+    "tools.none": "Keine Parameter.",
+    "tools.example": "Beispielaufruf",
+    "tools.copy": "Beispiel für {name} kopieren",
+    "tools.param.query": "Erforderlich · Suchbegriff als Text.",
+    "tools.param.count": "Optional · 1–20 Ergebnisse, Standard: 8.",
+    "tools.param.engine": "Optional · Bevorzugte Engine-ID, z. B. tavily. Fallback auf andere Anbieter bleibt aktiv.",
+    "tools.param.url": "Erforderlich · Vollständige URL der Webseite.",
+
     "settings.title": "Rotation einstellen",
     "settings.strict": "Strikter Gratis-Modus",
     "settings.strictHelp": "Engines mit erschöpftem bekanntem Kontingent werden übersprungen. Geschätzte oder unbekannte Limits garantieren keine Kostenfreiheit; Anbieter-Budgetlimits zusätzlich setzen.",
@@ -119,6 +136,23 @@ window.I18N = {
   },
 
   en: {
+    "nav.tools": "MCP Tools",
+    "tools.title": "MCP Tools",
+    "tools.sub": "Four tools your AI assistant can call",
+    "tools.intro": "Tell your assistant what you need and it will call the appropriate tool. Examples show tool names and arguments; copying an example does not run it.",
+    "tools.web_search": "Searches the web and returns titles, URLs and snippets. Automatically rotates between engines and falls back to another provider when a request fails.",
+    "tools.fetch_url": "Fetches a specific webpage and returns its content as Markdown. Uses a separate provider rotation for text extraction.",
+    "tools.engine_status": "Reports configuration, access per capability, local usage and quotas. A missing key is not always a problem: some capabilities work keyless. Stored errors are historical; this is not a live health check.",
+    "tools.open_dashboard": "Opens this dashboard in a browser on the machine running the server. A remote server does not automatically open your local browser.",
+    "tools.parameters": "Parameters",
+    "tools.none": "No parameters.",
+    "tools.example": "Example call",
+    "tools.copy": "Copy example for {name}",
+    "tools.param.query": "Required · Search query as text.",
+    "tools.param.count": "Optional · 1–20 results, default: 8.",
+    "tools.param.engine": "Optional · Preferred engine ID, e.g. tavily. Fallback to other providers remains enabled.",
+    "tools.param.url": "Required · Full webpage URL.",
+
     "settings.title": "Rotation settings",
     "settings.strict": "Strict free mode",
     "settings.strictHelp": "Skips engines whose known quota is exhausted. Estimated or unknown limits cannot guarantee zero cost; also set provider spending caps.",

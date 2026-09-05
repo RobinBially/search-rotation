@@ -1,7 +1,7 @@
 "use strict";
 
 /* search-rotation Konsole — SPA mit Hash-Routing.
-   Views: Übersicht (#/), Engines (#/engines), Verlauf (#/history) */
+   Views: Übersicht (#/), Engines (#/engines), Verlauf (#/history), MCP Tools (#/tools) */
 
 const $ = (s) => document.querySelector(s);
 
@@ -271,7 +271,7 @@ function queuePut(bodyBuilder) {
 
 function parseHash() {
   const h = location.hash.replace(/^#/, "");
-  return ["/", "/engines", "/history"].includes(h) ? h : "/";
+  return ["/", "/engines", "/history", "/tools"].includes(h) ? h : "/";
 }
 
 function setRoute(route) {
@@ -297,6 +297,7 @@ function render() {
   if (!state.config) return renderSkeleton();
   if (state.route === "/engines") renderEngines();
   else if (state.route === "/history") renderHistory();
+  else if (state.route === "/tools") renderTools();
   else renderOverview();
 }
 
@@ -496,6 +497,25 @@ function renderSnippets() {
     2,
   );
   $("#snip-remote").textContent = "URL: " + remoteUrl + "\n" + "Authorization: Bearer <token>";
+}
+
+/* ---------- View: MCP tools ---------- */
+
+function renderTools() {
+  const tools = [
+    { name: "web_search", icon: "search", params: [["query", "query"], ["numResults", "count"], ["engine", "engine"]], args: { query: "latest AI research", numResults: 5 } },
+    { name: "fetch_url", icon: "link", params: [["url", "url"]], args: { url: "https://example.com" } },
+    { name: "engine_status", icon: "gauge", params: [], args: {} },
+    { name: "open_dashboard", icon: "stack", params: [], args: {} },
+  ];
+  $("#view").innerHTML = '<div class="page">' + pageHead(t("tools.title"), t("tools.sub")) +
+    '<p class="tools-intro">' + esc(t("tools.intro")) + '</p><div class="tools-grid">' + tools.map(tool =>
+      '<article class="panel tool-card"><div class="panel-head"><svg width="20" height="20" aria-hidden="true"><use href="#i-' + tool.icon + '"/></svg><h2><code>' + tool.name + '</code></h2></div>' +
+      '<div class="tool-body"><p>' + esc(t("tools." + tool.name)) + '</p><h3>' + esc(t("tools.parameters")) + '</h3>' +
+      (tool.params.length ? '<dl class="tool-params">' + tool.params.map(([name, key]) => '<dt><code>' + name + '</code></dt><dd>' + esc(t("tools.param." + key)) + '</dd>').join('') + '</dl>' : '<p class="muted">' + esc(t("tools.none")) + '</p>') +
+      '<div class="tool-example"><h3>' + esc(t("tools.example")) + '</h3><pre id="tool-example-' + tool.name + '">' + esc(JSON.stringify({ name: tool.name, arguments: tool.args }, null, 2)) + '</pre>' +
+      '<button class="btn" data-copy="tool-example-' + tool.name + '" aria-label="' + esc(t("tools.copy", { name: tool.name })) + '">' + esc(t("btn.copy")) + '</button></div></div></article>'
+    ).join('') + '</div></div>';
 }
 
 /* ---------- View: Engines ---------- */

@@ -3,6 +3,19 @@
    Dark-first, Light-Theme via [data-theme="light"]
    ============================================================ */
 
+.tools-intro { color: var(--muted); max-width: 78ch; margin: 0 0 24px; }
+.tools-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.tool-card { min-width: 0; display: flex; flex-direction: column; }
+.tool-card .panel-head svg { color: var(--accent); flex-shrink: 0; }
+.tool-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
+.tool-body > p { margin: 0 0 20px; color: var(--muted); }
+.tool-body h3 { margin: 0 0 10px; font-size: 13px; }
+.tool-params { margin: 0 0 24px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 16px; font-size: 13px; }
+.tool-params dd { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+.tool-example { margin-top: auto; }
+.tool-example pre { padding: 16px; background: var(--input-bg); border: 1px solid var(--border); border-radius: var(--radius-s); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+@media (max-width: 720px) { .tools-grid { grid-template-columns: minmax(0, 1fr); } }
+
 :root {
   --accent: #8b7cf7;
   --accent-2: #4dd8e6;

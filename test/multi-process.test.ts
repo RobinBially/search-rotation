@@ -38,7 +38,8 @@ test('Two stdio harnesses use distinct dashboards and reload shared engine confi
     const other = await (await fetch(urls[1]+'api/config')).json();
     assert.equal(other.engines.find((e:any) => e.id === 'exa').enabled,false);
     const result = await clients[1].callTool({name:'engine_status',arguments:{}});
-    assert.match(JSON.stringify(result), /Exa — aus/);
+    const engines = result.structuredContent?.engines as Array<{id: string; enabled: boolean}>;
+    assert.equal(engines.find(engine => engine.id === 'exa')?.enabled, false);
   } finally {
     await Promise.all(clients.map(client => client.close()));
     rmSync(dir,{recursive:true,force:true});

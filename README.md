@@ -7,7 +7,11 @@
 
 Rotate across available quotas, automatically fail over when a provider is unavailable, and return consistent results to your AI assistant. A local dashboard lets you manage API keys, reorder engines, check quotas, and inspect request history.
 
-![search-rotation dashboard showing engine rotation, remaining quotas, and search activity](docs/assets/dashboard.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/dashboard-dark.png">
+  <img src="docs/assets/dashboard-light.png" alt="search-rotation dashboard showing engine rotation and remaining quotas">
+</picture>
+
 *Actual dashboard UI, shown in English with illustrative demo data.*
 
 ## Quick start
@@ -35,7 +39,18 @@ Add your provider keys in the dashboard, then connect your assistant using the *
 
 **Providers:** Tavily · Firecrawl · Parallel · Exa · Google PSE · Jina Reader · DuckDuckGo HTML. [Keyless access and quota accounting](docs/provider-access.md) vary by provider.
 
-**MCP tools:** `web_search` · `fetch_url` · `engine_status` · `open_dashboard`.
+## MCP tools
+
+`web_search` · `fetch_url` · `engine_status` · `open_dashboard`
+
+The dashboard's **MCP Tools** tab explains each tool, its parameters, and copyable example calls.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/mcp-tools-dark.png">
+  <img src="docs/assets/mcp-tools-light.png" alt="MCP Tools overview with parameters and example calls for all four tools">
+</picture>
+
+*Actual dashboard UI, shown in English. Available in the upcoming release.*
 
 ## Learn more
 
