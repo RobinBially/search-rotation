@@ -10,8 +10,8 @@ import { serve } from '@hono/node-server';
 import { buildWebApp } from '../dist/web/app.js';
 import { ADAPTERS, KNOWN_IDS, SEARCH_ORDER, FETCH_ORDER, DEFAULT_ENABLED } from '../dist/engines/index.js';
 import { normalizeConfig } from '../dist/config.js';
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const now = new Date('2026-09-05T10:30:00Z');
+
+const now = process.env.SCREENSHOT_FIXTURE_ONLY === '1' ? new Date() : new Date('2026-09-06T10:30:00Z');
 const counts = { tavily: [248, 21, 252.2], firecrawl: [186, 32, 404], parallel: [312, 16, 328], exa: [158, 8, 166], 'google-cse': [0, 0, 0], jina: [0, 67, 67], duckduckgo: [44, 0, 44] };
 const config = normalizeConfig({}, { knownIds: KNOWN_IDS, searchOrder: SEARCH_ORDER, fetchOrder: FETCH_ORDER, defaultEnabled: DEFAULT_ENABLED });
 for (const engine of config.engines) {
@@ -27,7 +27,7 @@ const rows = ADAPTERS.map(adapter => {
   const used = !ip && meta.quota?.unit === 'credits' ? consumed : search + fetch;
   return { ...meta, enabled: e.enabled, hasKey: Boolean(e.apiKey), keyMasked: e.apiKey ? 'demo…only' : '', extrasSet: {},
     searchPosition: KNOWN_IDS.indexOf(meta.id), fetchPosition: FETCH_ORDER.indexOf(meta.id),
-    monthlyLimit: ip ? 0 : meta.monthlyFree, used: {search, fetch, errors: 0, consumed},
+    monthlyLimit: ip ? 0 : meta.monthlyFree, used: {search, fetch, errors: meta.id === "firecrawl" ? 3 : meta.id === "exa" ? 1 : 0, consumed},
     remote: remote ? {limit, used, remaining: limit - used} : null,
     remainingPct: limit === null ? null : (limit - used) / limit,
     quota: { period: ip ? 'ip' : meta.quota?.period ?? 'month', unit: ip ? 'requests' : meta.quota?.unit ?? 'requests', limit, used,
@@ -42,16 +42,32 @@ const samples = [
   ['search', 'React server components documentation', 'tavily', 710],
 ];
 const history = samples.map(([kind, input, engine, ms], i) => ({kind, input, engine, ms, ok: true, attempts: [{engine, ms, ok:true}], ts: new Date(now.getTime() - (i * 4 + 2) * 60000).toISOString(), result: kind === 'search' ? {count:8,items:[]} : {chars:8420}}));
+// Include a representative 48-hour activity window behind the six recent calls.
+for (let bucket = 1; bucket < 24; bucket++) {
+  const n = [0, 2, 5, 1, 0, 3, 7, 4][bucket % 8];
+  for (let j = 0; j < n; j++) {
+    const [kind, input, engine, ms] = samples[(bucket + j) % samples.length];
+    history.push({kind, input, engine, ms, ok: true, attempts: [{engine, ms, ok:true}],
+      ts: new Date(now.getTime() - (bucket * 120 + j * 3 + 2) * 60000).toISOString(),
+      result: kind === 'search' ? {count:8,items:[]} : {chars:8420}});
+  }
+}
 const app = buildWebApp({configPath:'~/.config/search-rotation/config.json', getConfig:()=>config, saveConfig:()=>{},
   adapters:ADAPTERS, status:async()=>rows, month:()=> '2026-09', historyList:()=>history, historyClear:()=>{},
   testEngine:async()=>({ok:false,ms:0,error:'Screenshot fixture: provider calls disabled'})});
 const server = serve({fetch:app.fetch,hostname:'127.0.0.1',port:0});
 await once(server,'listening');
 const origin = `http://127.0.0.1:${server.address().port}`;
+if (process.env.SCREENSHOT_FIXTURE_ONLY === '1') {
+  console.log(JSON.stringify({origin, time:now.toISOString()}));
+  await new Promise(resolve => server.on('close', resolve));
+  process.exit(0);
+}
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 let browser;
 try {
   browser = await chromium.launch({headless:true});
-  const page = await browser.newPage({viewport:{width:1440,height:1440},deviceScaleFactor:1,locale:'en-US',colorScheme:'dark',reducedMotion:'reduce'});
+  const page = await browser.newPage({viewport:{width:1440,height:2400},deviceScaleFactor:1,locale:'en-US',colorScheme:'dark',reducedMotion:'reduce'});
   await page.clock.install({time:now});
   // Only the loopback fixture is reachable, including its bundled provider icons.
   await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
@@ -70,11 +86,12 @@ try {
       await page.evaluate(() => window.scrollTo({top:0,behavior:'instant'}));
       if (view === 'dashboard') {
         const icons = page.locator('.logo-wrap img');
+        if (await page.locator('.setup-panel').getAttribute('open') === null) throw new Error('MCP setup must be expanded by default');
         if (await icons.count() !== 4) throw new Error('Expected four actual provider logos, not letter fallbacks');
         await icons.evaluateAll(images => Promise.all(images.map(image => image.decode())));
       }
       const content = await page.locator('.page').boundingBox();
-      const overview = view === 'dashboard' ? await page.locator('.two-col').boundingBox() : null;
+      const overview = view === 'dashboard' ? content : null;
       const clip = overview
         ? {x:content.x-24,y:0,width:content.width+48,height:overview.y+overview.height+14}
         : {x:content.x-20,y:content.y-12,width:content.width+40,height:content.height+28};

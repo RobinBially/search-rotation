@@ -21,6 +21,7 @@ function harness(savedLanguage: string | null = null) {
       createElement: () => ({ textContent: "", get innerHTML() { return this.textContent; } }),
     },
   });
+  vm.runInContext(readFileSync(new URL("../static/i18n.js", import.meta.url), "utf8"), context);
   vm.runInContext(source.slice(0, source.indexOf('/* ---------- Sprach-Dropdown')), context);
   vm.runInContext('render = () => {}; refreshStatus = async () => {}; toast = () => {};', context);
   const run = (s: string) => vm.runInContext(s, context);
@@ -80,12 +81,11 @@ test("Fetch-only Engine-Test verwendet Fetch und zeigt Zeichenzahl", async () =>
 
 test("Kontingent zeigt Tagesfenster und IP-Limit als unbekannt", () => {
   const h = harness();
-  h.context.t = (key: string) => key;
   const daily = h.run('quotaHtml({id:"google-cse",quota:{period:"day",unit:"requests",limit:100,used:99,source:"local",estimated:false}})');
-  assert.match(daily, /99/);
-  assert.match(daily, /quota.period.day/);
+  assert.match(daily, /1 \/ 100 requests remaining/);
+  assert.match(daily, /today \(provider timezone\)/);
   const ip = h.run('quotaHtml({id:"exa",monthlyLimit:1400,used:{search:10},quota:{period:"ip",unit:"requests",limit:null,used:null,source:"unknown",estimated:false}})');
-  assert.match(ip, /quota.unknown/);
+  assert.match(ip, /Provider limit and total usage unknown/);
   assert.doesNotMatch(ip, /1400/);
 });
 
@@ -107,7 +107,7 @@ test('Unknown quotas show successful local calls and never a full bar or infinit
   const h = harness();
   h.run('state.status=[{id:"exa",label:"Exa",enabled:true,capabilities:["search"],searchPosition:0,used:{search:7,fetch:5},remainingPct:null,quota:{period:"ip",unit:"requests",source:"local",used:12,limit:null}}]');
   const quota = h.run('quotaHtml(state.status[0])');
-  assert.match(quota, /12/); assert.match(quota, /quota.localCalls/);
+  assert.match(quota, /12/); assert.match(quota, /calls · month/);
   assert.doesNotMatch(quota, /class="bar"|1400|∞/);
   assert.doesNotMatch(h.run('rotationHtml()'), /class="bar"/);
   assert.match(h.run('healthHtml()'), /12/);
@@ -133,4 +133,84 @@ test('Only drag handles are draggable so native dragstart targets the handle', (
   assert.equal(harness().run('lang'), 'en');
   assert.equal(harness('de').run('lang'), 'de');
   assert.equal(harness('unsupported').run('lang'), 'en');
+});
+
+test('Engine calls include failures and remain visible with or without an API key', () => {
+  const h = harness();
+  for (const hasKey of [true, false]) {
+    h.context.hasKey = hasKey;
+    h.run('state.status=[{id:"firecrawl",label:"Firecrawl",enabled:true,hasKey,capabilities:["search","fetch"],searchPosition:0,used:{search:40,fetch:52,errors:1},quota:hasKey?{limit:1000,used:368,unit:"credits",period:"month",source:"remote"}:{limit:null,used:92,unit:"requests",period:"ip",source:"local"}}]');
+    for (const markup of [h.run('quotaHtml(state.status[0])'), h.run('rotationHtml()'), h.run('healthHtml()')]) {
+      assert.match(markup, /93 calls · month/);
+      assert.match(markup, /Searches: 40 · Fetches: 52 · Errors: 1/);
+      if (hasKey) assert.match(markup, /632 \/ 1,000 credits remaining/);
+      else assert.match(markup, /Provider limit and total usage unknown/);
+    }
+  }
+});
+
+test('Exhausted quota has an empty bar; missing quota is never shown as full or healthy', () => {
+  const h = harness();
+  const exhausted = h.run('quotaHtml({id:"firecrawl",quota:{limit:1000,used:1001,unit:"credits",source:"remote"}})');
+  assert.match(exhausted, /width:0%/);
+  assert.match(exhausted, /0 \/ 1,000 credits remaining/);
+  assert.equal(h.run('remainingPctOf({quota:{limit:1000}})'), null);
+  assert.equal(h.run('remainingPctOf({remoteError:"timeout"})'), null);
+  const failed = h.run('quotaHtml({id:"firecrawl",remoteError:"timeout",quota:{limit:1000,used:2,unit:"credits",source:"local",period:"month"}})');
+  assert.match(failed, /Provider quota unavailable/);
+  assert.match(failed, /998 \/ 1,000/);
+});
+
+test('Activity bins cover exactly 48 hours and count tool calls separately from fallback attempts', () => {
+  const h = harness();
+  h.context.now = Date.parse('2026-09-06T12:00:00Z');
+  h.context.entries = [
+    {ts: new Date(h.context.now).toISOString(),kind:'search',ok:true,attempts:[{engine:'firecrawl',ok:false},{engine:'exa',ok:true}]},
+    {ts: new Date(h.context.now - 2 * 3600000).toISOString(),kind:'fetch',ok:false,attempts:[{engine:'firecrawl',ok:false}]},
+    {ts: new Date(h.context.now - 48 * 3600000 + 1).toISOString(),kind:'search',ok:true,engine:'tavily'},
+    ...[48,60,96].map(hours=>({ts:new Date(h.context.now-hours*3600000).toISOString(),kind:'search',ok:true})),
+    {ts: new Date(h.context.now + 1).toISOString(),kind:'search',ok:true},
+    {ts:'invalid',kind:'search',ok:true},
+  ];
+  const bins = h.run('activityBuckets(entries, now)');
+  assert.equal(bins.length, 24);
+  assert.equal(bins.reduce((n: number,b: any)=>n+b.total,0),3);
+  assert.equal(bins[23].total,1);
+  assert.equal(bins[23].attempts,2);
+  assert.equal(bins[23].engines.firecrawl,1);
+  assert.equal(bins[22].errors,1);
+  assert.equal(bins[0].search,1);
+  assert.equal(bins[0].start,h.context.now-48*3600000);
+});
+
+test('Activity exposes keyboard/touch details and discloses the history sample limit', () => {
+  const h = harness();
+  const html = h.run('sparkline([{ts:new Date().toISOString(),kind:"search",ok:true,attempts:[{engine:"firecrawl",ok:false},{engine:"exa",ok:true}]}])');
+  assert.equal((html.match(/class="activity-bucket"/g) || []).length,24);
+  assert.match(html,/aria-label="[^"]*Tool calls: 1/);
+  assert.match(html,/2 engine attempts incl. fallbacks: firecrawl: 1 · exa: 1/);
+  assert.match(html,/max\. 200/);
+});
+
+test('Empty history has no error rate; successful fallback is not a failed tool call', () => {
+  const h = harness();
+  assert.equal(h.run('statValues().errRate'),'–');
+  h.run('state.history=[{ok:true,ms:0,attempts:[{engine:"firecrawl",ok:false},{engine:"exa",ok:true}]}]');
+  assert.equal(h.run('statValues().errRate'),'0%');
+  assert.equal(h.run('statValues().avg'),'0 ms');
+  h.run('state.filters.engine="firecrawl"');
+  assert.equal(h.run('filteredHistory().length'),1);
+});
+
+test('Status refresh detects call counts even when the quota percentage stays unknown', () => {
+  const h = harness();
+  const start = source.indexOf('function statusSig()');
+  h.run(source.slice(start, source.indexOf('setInterval(', start)));
+  h.run('state.meta={month:"2026-09"}; state.status=[{id:"exa",remainingPct:null,used:{search:1,fetch:0,errors:0},quota:{limit:null}}]');
+  const before = h.run('statusSig()');
+  h.run('state.status[0].used.search++');
+  assert.notEqual(h.run('statusSig()'), before);
+  const after = h.run('statusSig()');
+  h.run('state.meta.month="2026-10"');
+  assert.notEqual(h.run('statusSig()'), after);
 });

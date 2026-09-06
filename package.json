@@ -1,6 +1,6 @@
 {
   "name": "search-rotation",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Round-robin web search over the free tiers of multiple search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina, DuckDuckGo) as an MCP server \u2014 with a local dashboard for API keys, engine order/toggles and live quota status.",
   "type": "module",
   "license": "MIT",

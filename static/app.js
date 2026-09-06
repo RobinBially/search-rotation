@@ -106,60 +106,51 @@ function pctClass(pct) {
   return pct > 40 ? "ok" : pct > 10 ? "warn" : "crit";
 }
 
-function bar(pct, extraCls) {
-  const cls = pctClass(pct);
-  return '<div class="bar"><div class="fill ' + cls + (extraCls ? " " + extraCls : "") + '" style="width:' + Math.max(2, Math.min(100, pct)) + '%"></div></div>';
+function bar(pct) {
+  return '<span class="bar" role="img" aria-label="' + esc(t("quota.free", { pct })) + '"><span class="fill ' + pctClass(pct) + '" style="width:' + Math.max(0, Math.min(100, pct)) + '%"></span></span>';
 }
 
-function unknownQuotaLabel(st, compact = false) {
-  const calls = (st.used?.search || 0) + (st.used?.fetch || 0);
-  return calls + " " + t(compact ? "quota.localShort" : "quota.localCalls") + (compact ? "" : " · " + t("quota.unknown"));
+function usageSummary(st) {
+  const search = st.used?.search || 0, fetch = st.used?.fetch || 0, errors = st.used?.errors || 0;
+  return { total: search + fetch + errors, search, fetch, errors };
+}
+
+function usageHtml(st) {
+  const counts = usageSummary(st);
+  return '<span class="usage-summary" title="' + esc(t("usage.help")) + '"><strong>' +
+    esc(t(counts.total === 1 ? "usage.totalOne" : "usage.total", { n: counts.total })) + '</strong><span class="usage-detail">' +
+    esc(t("usage.detail", counts)) + '</span></span>';
+}
+
+function quotaDescription(st) {
+  const q = st.quota;
+  if (!q || !(q.limit > 0) || !Number.isFinite(q.used)) return t("quota.unknown");
+  const format = n => n.toLocaleString(lang, { maximumFractionDigits: 2 });
+  return t("quota.remaining", { remaining: format(Math.max(0, q.limit - q.used)), limit: format(q.limit), unit: t("quota.unit." + q.unit) }) +
+    " · " + t(q.source === "remote" ? "quota.providerBalance" : "quota.period." + q.period) +
+    (q.timeZone ? " · " + q.timeZone : "") + " · " + t("quota.source." + q.source) + (q.estimated ? " · " + t("quota.estimated") : "");
+}
+
+function budgetHtml(st) {
+  const pct = remainingPctOf(st);
+  const help = quotaDescription(st) + ". " + t(st.quota?.source === "remote" ? "quota.remoteHelp" : "quota.localHelp");
+  return '<span class="budget-summary" title="' + esc(help) + '">' +
+    (pct === null ? '' : bar(pct)) + '<span class="quota-label">' + esc(quotaDescription(st)) + '</span></span>' +
+    (st.remoteError ? '<span class="quota-err" title="' + esc(st.remoteError) + '">' + esc(t("quota.fetchError")) + '</span>' : '');
 }
 
 function quotaHtml(st) {
-  if (!st || !st.id) return "";
-  if (st.quota) {
-    const q = st.quota;
-    if (q.limit === null || q.used === null) {
-      return '<span class="quota-none">' + esc(unknownQuotaLabel(st)) + "</span>";
-    }
-    const pct = q.limit > 0 ? Math.max(0, Math.round(100 * (q.limit - q.used) / q.limit)) : 100;
-    const label = q.used + " / " + q.limit + " " + t("quota.unit." + q.unit) + " · " + t(q.source === "remote" ? "quota.providerBalance" : "quota.period." + q.period) +
-      " · " + t("quota.source." + q.source) + (q.estimated ? " · " + t("quota.estimated") : "");
-    return bar(pct) + '<span class="quota-label">' + esc(label) + "</span>";
-  }
-  if (st.remoteError) return '<span class="quota-err">' + esc(t("quota.error", { error: st.remoteError })) + "</span>";
-  if (st.remote && st.remote.limit) {
-    const rem = st.remote.remaining !== undefined ? st.remote.remaining : st.remote.limit - (st.remote.used || 0);
-    const pct = Math.max(0, Math.round((100 * rem) / st.remote.limit));
-    return bar(pct) + '<span class="quota-label">' + esc(t("quota.remote", { used: st.remote.used ?? "?", limit: st.remote.limit })) + "</span>";
-  }
-  if (st.monthlyLimit > 0) {
-    const used = (st.used?.search || 0) + (st.used?.fetch || 0);
-    const pct = Math.max(0, Math.round((100 * (st.monthlyLimit - used)) / st.monthlyLimit));
-    return bar(pct) + '<span class="quota-label">' + esc(t("quota.local", { used, limit: st.monthlyLimit })) + "</span>";
-  }
-  return '<span class="quota-none">' + esc(t("quota.none")) + "</span>";
+  return st?.id ? usageHtml(st) + budgetHtml(st) : '';
 }
 
-function ringGauge(pct, unknown = false) {
+function ringGauge(pct) {
   const r = 21, c = 2 * Math.PI * r;
-  if (pct === null || pct === undefined) {
-    // Kein festes Kontingent: neutraler Ring mit ∞
-    return (
-      '<div class="gauge"><svg width="52" height="52" viewBox="0 0 52 52">' +
-      '<circle class="track" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5"/></svg>' +
-      '<span class="gauge-val inf">' + (unknown ? '?' : '∞') + '</span></div>'
-    );
-  }
-  const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
-  return (
-    '<div class="gauge"><svg width="52" height="52" viewBox="0 0 52 52">' +
+  const label = pct === null ? t("quota.unknown") : t("quota.free", { pct });
+  const off = c * (1 - (pct ?? 0) / 100);
+  return '<span class="gauge" role="img" title="' + esc(label) + '" aria-label="' + esc(label) + '"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 52 52">' +
     '<circle class="track" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5"/>' +
-    '<circle class="val ' + pctClass(pct) + '" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5" stroke-linecap="round" ' +
-    'stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/></svg>' +
-    '<span class="gauge-val">' + pct + "</span></div>"
-  );
+    (pct === null ? '' : '<circle class="val ' + pctClass(pct) + '" cx="26" cy="26" r="' + r + '" fill="none" stroke-width="5" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/>') +
+    '</svg><span class="gauge-val' + (pct === null ? ' inf' : '') + '">' + (pct === null ? '?' : pct + '%') + '</span></span>';
 }
 
 /* ---------- Token & API ---------- */
@@ -184,6 +175,7 @@ async function api(path, opts = {}) {
 async function refreshStatus() {
   const s = await api("/api/status");
   state.status = s.engines || [];
+  if (state.meta) state.meta.month = s.month;
 }
 
 async function loadHistory() {
@@ -313,45 +305,25 @@ function statValues() {
   const errRate = h.length ? Math.round((100 * fails) / h.length) : 0;
   const okDurs = h.filter((e) => e.ok).map((e) => e.ms);
   const avg = okDurs.length ? okDurs.reduce((a, b) => a + b, 0) / okDurs.length : 0;
-  return { searches, fetches, errRate: errRate + "%", avg: avg ? fmtMs(avg) : "–" };
+  return { searches, fetches, errRate: h.length ? errRate + "%" : "–", avg: okDurs.length ? fmtMs(avg) : "–" };
 }
 
 function rotationHtml() {
   const enabled = sortedEngines().filter((e) => e.enabled && e.capabilities?.includes("search"));
-  if (!enabled.length) {
-    return '<div class="empty" style="padding:22px"><span class="empty-title">' + esc(t("rotation.empty")) + "</span></div>";
-  }
-  return enabled
-    .map(
-      (e) =>
-        '<a class="rot-row" href="#/engines">' +
-        '<span class="rot-pos">' + (e.searchPosition + 1) + "</span>" +
-        engineLogoHtml(e) +
-        '<span class="rot-name">' + esc(e.label || e.id) + "</span>" +
-        (e.quota?.limit === null
-          ? '<span class="rot-quota" title="' + esc(unknownQuotaLabel(e)) + '">' + esc(unknownQuotaLabel(e, true)) + "</span>"
-          : bar(remainingPctOf(e) ?? 100, "accent")) +
-        '<svg class="rot-arrow" width="15" height="15"><use href="#i-arrow"/></svg></a>',
-    )
-    .join("");
+  if (!enabled.length) return '<div class="empty" style="padding:22px"><span class="empty-title">' + esc(t("rotation.empty")) + '</span></div>';
+  return enabled.map((e, i) => '<a class="rot-row" href="#/engines">' +
+    '<span class="rot-pos">' + (i + 1) + '</span>' + engineLogoHtml(e) +
+    '<span class="rot-content"><span class="rot-name">' + esc(e.label || e.id) + '</span>' + usageHtml(e) + budgetHtml(e) + '</span>' +
+    '<svg class="rot-arrow" width="15" height="15"><use href="#i-arrow"/></svg></a>').join('');
 }
 
 function healthHtml() {
-  return sortedEngines()
-    .map((e) => {
-      const pct = remainingPctOf(e);
-      const unknown = e.quota?.limit === null;
-      const src = e.quota
-        ? unknown ? unknownQuotaLabel(e, true) : t(e.quota.source === "remote" ? "quota.providerBalance" : "quota.period." + e.quota.period) + " · " + t("quota.source." + e.quota.source) + (e.quota.estimated ? " · " + t("quota.estimated") : "")
-        : e.remote && e.remote.limit ? t("health.source.remote") : e.monthlyLimit > 0 ? t("health.source.local") : t("health.source.none");
-      return (
-        '<a class="health-card' + (e.enabled ? "" : " off") + '" href="#/engines">' +
-        ringGauge(pct, unknown) +
-        '<span class="health-meta"><span class="health-name">' + esc(e.label || e.id) + "</span>" +
-        '<span class="health-src">' + (e.enabled ? esc(src) : esc(t("health.off"))) + "</span></span></a>"
-      );
-    })
-    .join("");
+  return sortedEngines().map(e => '<a class="health-card' + (e.enabled ? '' : ' off') + '" href="#/engines">' +
+    ringGauge(remainingPctOf(e)) + '<span class="health-meta"><span class="health-name">' + esc(e.label || e.id) +
+    (!e.enabled ? ' <span class="badge">' + esc(t("health.off")) + '</span>' : '') + '</span>' +
+    usageHtml(e) + '<span class="health-src" title="' + esc(t(e.quota?.source === 'remote' ? 'quota.remoteHelp' : 'quota.localHelp')) + '">' + esc(quotaDescription(e)) + '</span>' +
+    (e.remoteError ? '<span class="quota-err" title="' + esc(e.remoteError) + '">' + esc(t("quota.fetchError")) + '</span>' : '') +
+    '</span></a>').join('');
 }
 
 function recentHtml() {
@@ -361,10 +333,11 @@ function recentHtml() {
     .slice(0, 6)
     .map(
       (e) =>
-        '<a class="recent-row" href="#/history">' +
+        '<a class="recent-row" href="#/history" title="' + esc(e.input + ' · ' + new Date(e.ts).toLocaleString(lang) + ' · ' + fmtMs(e.ms)) + '">' +
         '<span class="hkind-icon ' + esc(e.kind) + '" style="width:24px;height:24px"><svg width="13" height="13"><use href="#i-' + (e.kind === "search" ? "search" : "link") + '"/></svg></span>' +
         '<span class="ri">' + esc(e.input) + "</span>" +
         (e.ok ? "" : '<svg width="13" height="13" style="color:var(--crit)"><use href="#i-x"/></svg>') +
+        '<span class="recent-engine">' + esc(e.engine ? statusOf(e.engine).label || e.engine : t('hist.failed')) + '</span>' +
         '<span class="rt">' + relTime(e.ts) + "</span></a>",
     )
     .join("");
@@ -389,7 +362,7 @@ function renderOverview() {
     '<div class="panel"><div class="panel-head"><h2>' + esc(t("recent.title")) + '</h2><span class="spacer"><a class="btn btn-ghost" href="#/history">' + esc(t("recent.all")) + ' <svg width="13" height="13"><use href="#i-arrow"/></svg></a></span></div>' +
     '<div class="sparkline">' + sparkline(state.history) + "</div>" +
     '<div class="recent-list">' + recentHtml() + "</div></div>" +
-    '<details class="panel setup-panel"><summary>' + esc(t("setup.summary")) + '<svg class="chev" width="16" height="16"><use href="#i-chevron"/></svg></summary>' +
+    '<details class="panel setup-panel" open><summary>' + esc(t("setup.summary")) + '<svg class="chev" width="16" height="16"><use href="#i-chevron"/></svg></summary>' +
     '<div class="snippets">' +
     '<div class="snippet"><h3>' + esc(t("snippet.codex")) + '</h3><pre id="snip-codex"></pre><button class="btn" data-copy="snip-codex">' + esc(t("btn.copy")) + "</button></div>" +
     '<div class="snippet"><h3>' + esc(t("snippet.claude")) + '</h3><pre id="snip-claude"></pre><button class="btn" data-copy="snip-claude">' + esc(t("btn.copy")) + "</button></div>" +
@@ -404,6 +377,8 @@ function renderOverview() {
 function updateOverview() {
   const root = $("#view");
   if (!root.querySelector(".rot-list")) return;
+  const month = root.querySelector(".page-head .badge");
+  if (month) month.textContent = state.meta.month;
   const v = statValues();
   const set = (id, val) => {
     const el = root.querySelector('[data-stat="' + id + '"]');
@@ -418,7 +393,7 @@ function updateOverview() {
   const health = root.querySelector(".health-grid");
   if (health) health.innerHTML = healthHtml();
   const spark = root.querySelector(".sparkline");
-  if (spark) spark.innerHTML = sparkline(state.history);
+  if (spark && !spark.contains(document.activeElement) && !spark.matches(":hover")) spark.innerHTML = sparkline(state.history);
   const recent = root.querySelector(".recent-list");
   if (recent) recent.innerHTML = recentHtml();
 }
@@ -432,50 +407,57 @@ function pageHead(title, sub, month) {
 
 function statCard(stat, icon, label, sub, value) {
   return (
-    '<div class="panel stat-card"><span class="stat-icon"><svg width="16" height="16"><use href="#i-' + icon + '"/></svg></span>' +
+    '<div class="panel stat-card" tabindex="0" title="' + esc(t('stat.' + stat + 'Help')) + '"><span class="stat-icon"><svg width="16" height="16"><use href="#i-' + icon + '"/></svg></span>' +
     '<span class="stat-value" data-stat="' + stat + '">' + esc(value) + '</span><span class="stat-label">' + esc(label) + '</span><span class="stat-sub">' + esc(sub) + "</span></div>"
   );
 }
 
 function remainingPctOf(st) {
-  if (st.quota) {
-    const q = st.quota;
-    return q.limit > 0 && q.used !== null ? Math.max(0, Math.min(100, Math.round(100 * (q.limit - q.used) / q.limit))) : null;
-  }
-  if (st.remoteError) return 0;
-  if (st.remote && st.remote.limit) {
-    const rem = st.remote.remaining !== undefined ? st.remote.remaining : st.remote.limit - (st.remote.used || 0);
-    return Math.max(0, Math.round((100 * rem) / st.remote.limit));
-  }
-  if (st.monthlyLimit > 0) {
-    const used = (st.used?.search || 0) + (st.used?.fetch || 0);
-    return Math.max(0, Math.round((100 * (st.monthlyLimit - used)) / st.monthlyLimit));
-  }
-  return null; // kein festes Kontingent
+  const q = st.quota;
+  return q?.limit > 0 && Number.isFinite(q.used)
+    ? Math.max(0, Math.min(100, Math.round(100 * (q.limit - q.used) / q.limit))) : null;
 }
 
-/** 24 Zweistunden-Buckets aus dem Verlauf (48 h). */
-function sparkline(entries) {
-  const now = Date.now();
+/** Rolling 48-hour window, based on at most 200 retained tool calls. */
+function activityBuckets(entries, now = Date.now()) {
   const bucketMs = 2 * 3600 * 1000;
-  const buckets = new Array(24).fill(0);
+  const buckets = Array.from({ length: 24 }, (_, i) => ({
+    start: now - (24 - i) * bucketMs, end: now - (23 - i) * bucketMs,
+    total: 0, search: 0, fetch: 0, errors: 0, attempts: 0, engines: {},
+  }));
   for (const e of entries) {
     const age = now - new Date(e.ts).getTime();
-    if (age < 0 || age >= 48 * bucketMs) continue;
-    buckets[23 - Math.floor(age / bucketMs)]++;
+    if (!Number.isFinite(age) || age < 0 || age >= 24 * bucketMs) continue;
+    const bucket = buckets[23 - Math.floor(age / bucketMs)];
+    bucket.total++;
+    if (e.kind === 'search') bucket.search++;
+    if (e.kind === 'fetch') bucket.fetch++;
+    if (!e.ok) bucket.errors++;
+    const attempts = e.attempts ?? (e.engine ? [{ engine: e.engine }] : []);
+    for (const attempt of attempts) {
+      bucket.attempts++;
+      bucket.engines[attempt.engine] = (bucket.engines[attempt.engine] || 0) + 1;
+    }
   }
-  const max = Math.max(...buckets, 1);
-  const w = 100 / 24;
-  const rects = buckets
-    .map((v, i) => {
-      const bh = v ? Math.max(3, (v / max) * 38) : 1.5;
-      const x = (i * w + w * 0.2).toFixed(2);
-      const y = (40 - bh).toFixed(2);
-      const fill = v ? (i === 23 ? "var(--accent-2)" : "var(--accent)") : "var(--fill-track)";
-      return '<rect x="' + x + '" y="' + y + '" width="' + (w * 0.6).toFixed(2) + '" height="' + bh.toFixed(2) + '" rx="1" fill="' + fill + '" opacity="' + (v ? 0.85 : 1) + '"/>';
-    })
-    .join("");
-  return '<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">' + rects + "</svg>";
+  return buckets;
+}
+
+function sparkline(entries) {
+  const buckets = activityBuckets(entries);
+  const max = Math.max(...buckets.map(b => b.total), 1);
+  const format = ts => new Date(ts).toLocaleString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const bars = buckets.map(b => {
+    const providers = Object.entries(b.engines).map(([id, n]) => (statusOf(id).label || id) + ': ' + n).join(' · ');
+    const tip = format(b.start) + ' – ' + format(b.end) + '\n' + t('activity.bucket', b) +
+      (providers ? '\n' + t('activity.providers', { n: b.attempts }) + ': ' + providers : '');
+    return '<button type="button" class="activity-bucket" aria-label="' + esc(tip) + '">' +
+      '<span class="activity-fill" style="height:' + (b.total ? Math.max(5, b.total / max * 100) : 0) + '%"></span>' +
+      '<span class="activity-tooltip" aria-hidden="true">' + esc(tip) + '</span></button>';
+  }).join('');
+  return '<div class="activity-caption">' + esc(t('activity.caption')) + '</div>' +
+    '<div class="activity-bars" role="group" aria-label="' + esc(t('activity.caption')) + '">' + bars + '</div>' +
+    '<div class="activity-axis"><span>' + esc(t('activity.start')) + '</span><span>' + esc(t('activity.end')) + '</span></div>' +
+    '<p class="activity-note">' + esc(t('activity.sample', { n: entries.length })) + '</p>';
 }
 
 function renderSnippets() {
@@ -576,7 +558,7 @@ function renderEngines() {
         "</div>" +
         '<div class="drawer">' +
         '<div class="drawer-row">' +
-        '<input type="password" class="keyinput" data-id="' + esc(e.id) + '" placeholder="' +
+        '<input type="password" class="keyinput" aria-label="' + esc((e.label || e.id) + ": " + t("key.set")) + '" data-id="' + esc(e.id) + '" placeholder="' +
         (e.hasKey ? esc(t("key.replace", { masked: e.keyMasked })) : esc(t("key.set"))) + '">' +
         '<button class="btn btn-primary" data-act="save-key">' + esc(t("btn.save")) + "</button>" +
         (e.hasKey ? '<button class="btn btn-danger" data-act="clear-key">' + esc(t("key.clear")) + "</button>" : "") +
@@ -639,7 +621,7 @@ function filteredHistory() {
   const q = f.q.trim().toLowerCase();
   return state.history.filter((e) => {
     if (f.kind !== "all" && e.kind !== f.kind) return false;
-    if (f.engine && e.engine !== f.engine) return false;
+    if (f.engine && e.engine !== f.engine && !(e.attempts || []).some(a => a.engine === f.engine)) return false;
     if (q) {
       const hay = (e.input + " " + (e.engine || "") + " " + (e.attempts || []).map((a) => a.engine).join(" ")).toLowerCase();
       if (!hay.includes(q)) return false;
@@ -691,7 +673,7 @@ function histListHtml(entries) {
         '<details class="hist' + (e.ok ? "" : " fail") + '"' + (state.historyOpen.has(key) ? " open" : "") + ' data-key="' + esc(key) + '">' +
         "<summary>" +
         '<span class="hkind-icon ' + esc(e.kind) + '"><svg width="14" height="14"><use href="#i-' + (e.kind === "search" ? "search" : "link") + '"/></svg></span>' +
-        '<span class="htime">' + new Date(e.ts).toLocaleTimeString(lang, { hour12: false }) + "</span>" +
+        '<time class="htime" datetime="' + esc(e.ts) + '" title="' + esc(new Date(e.ts).toLocaleString(lang)) + '">' + new Date(e.ts).toLocaleTimeString(lang, { hour12: false }) + '</time>' +
         '<span class="hinput" title="' + esc(e.input) + '">' + esc(e.input) + "</span>" +
         '<span class="chips">' + (e.engine ? '<span class="chip ok">' + esc(e.engine) + "</span>" : "") + failChips + "</span>" +
         '<span class="hmeta">' +
@@ -742,7 +724,7 @@ function engineDropdownHtml(selected) {
 }
 
 function historyEmptyHtml() {
-  return '<div class="empty"><span class="empty-title">' + esc(t("history.empty")) + "</span></div>";
+  return '<div class="empty"><span class="empty-title">' + esc(t(state.history.length ? "history.noMatches" : "history.empty")) + "</span></div>";
 }
 
 function renderHistory() {
@@ -1066,9 +1048,7 @@ function historySig() {
 
 let lastStatusSig = "";
 function statusSig() {
-  return state.status
-    .map((s) => s.id + ":" + (s.enabled ? 1 : 0) + ":" + (s.remainingPct ?? "n") + ":" + (s.remoteError || ""))
-    .join("|");
+  return JSON.stringify([state.meta?.month, state.status.map(s => [s.id, s.enabled, s.searchPosition, s.capabilities, s.used, s.quota, s.remoteError])]);
 }
 
 setInterval(() => {

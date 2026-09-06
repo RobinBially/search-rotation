@@ -11,10 +11,10 @@ Rotate across available quotas, automatically fail over when a provider is unava
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/dashboard-dark.png">
-  <img src="docs/assets/dashboard-light.png" alt="search-rotation dashboard showing engine rotation and remaining quotas">
+  <img src="docs/assets/dashboard-light.png" alt="search-rotation dashboard showing per-engine call counts, remaining budgets, recent activity, and expanded MCP setup">
 </picture>
 
-*Actual dashboard UI, shown in English with illustrative demo data.*
+*Actual dashboard UI, shown in English with illustrative demo data. Calls and provider budgets are displayed separately; activity bars offer time-window and per-engine details.*
 
 ## Quick start
 
@@ -34,13 +34,13 @@ client to run `search-rotation` with no arguments. See the
 Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.6
+npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.7
 ```
 
 To preview the dashboard:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.6 --http --open
+npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.7 --http --open
 ```
 
 Add your provider keys in the dashboard, then connect your assistant using the **[MCP client setup guide](docs/clients.md)** for Codex, Claude, Cursor, or OpenCode.
@@ -49,7 +49,7 @@ Add your provider keys in the dashboard, then connect your assistant using the *
 
 - **Search and fetch:** independent rotation for web search and Markdown page extraction.
 - **Automatic failover:** quota-aware ordering, rate-limit cooldowns, and request timeouts.
-- **Local dashboard:** API keys, drag-and-drop engine order, quota status, and request history.
+- **Local dashboard:** API keys, drag-and-drop engine order, per-engine calls and errors, separate quota balances, and interactive request history.
 - **Local or remote:** MCP over stdio or authenticated Streamable HTTP.
 
 **Providers:** Tavily · Firecrawl · Parallel · Exa · Google PSE · Jina Reader · DuckDuckGo HTML. [Keyless access and quota accounting](docs/provider-access.md) vary by provider.
