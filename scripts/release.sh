@@ -3,14 +3,14 @@
 # Homebrew formula in localfoundry/homebrew-tap.
 #
 # Usage:
- #   VERSION=0.4.9 ./scripts/release.sh [output-dir] [--dry-run] [--publish] [--draft] [--force]
+#   VERSION=0.4.9 ./scripts/release.sh [output-dir] [--dry-run] [--publish] [--draft] [--force]
 #
 # Without --publish the script prepares everything: it runs the checks, bumps
 # the version, points the document pins at it, commits, tags, packs the tarball
 # with its checksum and writes the tap formula into the output directory.
 # --publish also pushes the commit and tag, creates the GitHub release and
- # updates the tap. --draft creates the release as a draft and skips the online
- # tap audit; --force continues although the working tree is dirty.
+# updates the tap. --draft creates the release as a draft and skips the online
+# tap audit; --force continues although the working tree is dirty.
 #
 # Environment:
 #   VERSION             required, x.y.z
@@ -23,6 +23,12 @@
 # this repository except the tap, which it clones when no checkout is given.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) sed -n '2,23p' "$0" | sed 's/^# *//'; exit 0 ;;
+    esac
+done
 
 VERSION="${VERSION:?VERSION must be set (x.y.z)}"
 RELEASE_REPOSITORY="${RELEASE_REPOSITORY:-RobinBially/search-rotation}"
@@ -45,7 +51,7 @@ while [[ $# -gt 0 ]]; do
         --publish) publish=1; shift ;;
         --draft) draft=1; shift ;;
         --force) force=1; shift ;;
-        -h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,23p' "$0" | sed 's/^# *//'; exit 0 ;;
         -*) echo "Unknown argument: $1" >&2; exit 1 ;;
         *) out="$1"; shift ;;
     esac
