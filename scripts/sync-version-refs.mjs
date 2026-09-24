@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Points the pinned version in the user-facing documents at a release.
 //
-// The release workflow runs this after a release so no document advertises a
-// version other than the one just published. Keep DOCUMENTS limited to files
+// The release driver runs this before tagging a release so no document
+// advertises a version other than the one being published. Keep DOCUMENTS limited to files
 // that carry a release pin; historical documents such as docs/release-notes.md
 // must stay untouched.
 import { readFileSync, writeFileSync } from 'node:fs';
