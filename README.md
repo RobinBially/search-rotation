@@ -111,6 +111,14 @@ Results show a publication date when supplied by the adapter, and request histor
 
 After updating, reconnect your MCP client to load the new tool schema.
 
+## Releasing
+
+```sh
+VERSION=0.4.9 ./scripts/release.sh --publish
+```
+
+The script checks the package (`npm ci`, build, tests, `npm run smoke:package`), bumps the version, points the document pins at it, commits and tags, packs the tarball with its checksum, creates the GitHub release and updates the formula in `localfoundry/homebrew-tap`. Without `--publish` it only prepares the artifacts in `.build/releases`; `--dry-run` checks the prerequisites, `--draft` creates a draft release and `--force` tolerates a dirty tree. The tap is cloned temporarily when `TAP_DIR` is not set, so a fresh checkout is enough.
+
 ## Learn more
 
 [Client setup](docs/clients.md) · [Operations & configuration (DE)](docs/operations.md) · [Releases](https://github.com/RobinBially/search-rotation/releases) · [CI](https://github.com/RobinBially/search-rotation/actions/workflows/ci.yml) · [MIT license](LICENSE)
