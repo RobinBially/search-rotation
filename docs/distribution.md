@@ -1,7 +1,7 @@
 # Distribution and listings
 
 Where search-rotation is published or listed, who keeps each channel current, and
-what still needs attention. Snapshot: 2026-09-26.
+what still needs attention. Snapshot: 2026-09-26, after the account rename from `localfoundry` to `robin-bially`.
 
 ## Channels
 
@@ -9,9 +9,9 @@ what still needs attention. Snapshot: 2026-09-26.
 | --- | --- | --- | --- |
 | npm | `search-rotation` | release workflow, trusted publishing | 0.4.10 |
 | Homebrew | `brew install robin-bially/tap/search-rotation` | release script writes the formula | 0.4.10 |
-| Official MCP Registry | `io.github.robin-bially/search-rotation` | release workflow, GitHub OIDC | active, 0.4.10 |
+| Official MCP Registry | `io.github.robin-bially/search-rotation` | release workflow, GitHub OIDC | rename pending: `io.github.localfoundry/search-rotation` is live at 0.4.10, the next release registers the new name |
 | GitHub releases | tag, tarball and checksum | release script | v0.4.10 |
-| Glama | [directory entry](https://glama.ai/mcp/servers/robin-bially/search-rotation-mcp), rated A | Glama indexes the repository on its own | listed; Glama followed the rename on its own |
+| Glama | [directory entry](https://glama.ai/mcp/servers/robin-bially/search-rotation-mcp), rated A | Glama indexes the repository on its own | listed; the account rename is pending a re-crawl |
 | mcpservers.org | [submission](https://mcpservers.org/de/submit) from 2026-09-26 | reviewed by the site | in review, up to two weeks |
 | PulseMCP | — | ingests the official registry | submissions paused, not listed yet |
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers/pull/15171) | Search & Data Extraction | maintainers | pull request open, listing checks done |
@@ -42,6 +42,7 @@ Three details are easy to forget:
 
 - After a release: `npm view search-rotation version` and the [registry entry](https://registry.modelcontextprotocol.io/?q=io.github.robin-bially%2Fsearch-rotation) should both show the new version. The release script already waits for npm.
 - Dependency and tap maintenance runs outside this repository on a biweekly schedule.
+- The GitHub account moved from `localfoundry` to `robin-bially` on 2026-09-26. The registry has no unpublish, so the entry `io.github.localfoundry/search-rotation` stays frozen at 0.4.10 while the next release adds `io.github.robin-bially/search-rotation`. The old handle is free again, so anything still pointing there can end up at a different account.
 - Open externally: mcpservers.org reviews the submission, PulseMCP is paused, the three list pull requests wait for their maintainers, and Glama re-crawls repositories at its own pace.
 
 ## Deliberately not used
