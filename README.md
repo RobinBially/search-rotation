@@ -119,13 +119,15 @@ After updating, reconnect your MCP client to load the new tool schema.
 ## Releasing
 
 ```sh
-VERSION=0.4.9 ./scripts/release.sh --publish
+VERSION=0.4.10 ./scripts/release.sh --publish
 ```
 
 The script checks the package (`npm ci`, build, tests, `npm run smoke:package`), bumps the version, points the document pins at it, commits and tags, packs the tarball with its checksum, creates the GitHub release, updates the formula in `localfoundry/homebrew-tap` and finally waits until the npm registry serves the new version. Without `--publish` it only prepares the artifacts in `.build/releases`; `--dry-run` checks the prerequisites, `--draft` creates a draft release and `--force` tolerates a dirty tree. The tap is cloned temporarily when `TAP_DIR` is not set, so a fresh checkout is enough.
 
 Publishing to npm happens in [`.github/workflows/publish.yml`](.github/workflows/publish.yml) through trusted publishing once the GitHub release is published, so the script itself needs no npm credentials. The workflow requires a trusted publisher for `search-rotation` on npmjs.com that points at this repository and `publish.yml`.
 
+The same workflow registers the version in the official MCP Registry from `server.json`. [Distribution & listings](docs/distribution.md) tracks every channel, who keeps it current, and what each one still needs.
+
 ## Learn more
 
-[Client setup](docs/clients.md) · [Operations & configuration (DE)](docs/operations.md) · [Releases](https://github.com/localfoundry/search-rotation-mcp/releases) · [CI](https://github.com/localfoundry/search-rotation-mcp/actions/workflows/ci.yml) · [MIT license](LICENSE)
+[Client setup](docs/clients.md) · [Operations & configuration (DE)](docs/operations.md) · [Distribution & listings](docs/distribution.md) · [Releases](https://github.com/localfoundry/search-rotation-mcp/releases) · [CI](https://github.com/localfoundry/search-rotation-mcp/actions/workflows/ci.yml) · [MIT license](LICENSE)
