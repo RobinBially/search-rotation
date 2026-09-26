@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PACKAGE = 'search-rotation';
+const REPOSITORY = 'localfoundry/search-rotation-mcp';
 const DOCUMENTS = ['README.md', 'docs/clients.md', 'docs/operations.md'];
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -39,7 +40,7 @@ function isOlder(current, wanted) {
 const argv = process.argv.slice(2);
 const version = target(argv);
 const check = argv.includes('--check');
-const pin = new RegExp('(github:(?:localfoundry|RobinBially)/' + PACKAGE + '#)v(\\d+\\.\\d+\\.\\d+)', 'g');
+const pin = new RegExp('(github:' + REPOSITORY + '#)v(\\d+\\.\\d+\\.\\d+)', 'g');
 const archive = new RegExp(PACKAGE + '-(\\d+\\.\\d+\\.\\d+)\\.tgz', 'g');
 const updated = [];
 

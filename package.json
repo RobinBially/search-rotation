@@ -6,7 +6,7 @@
   "license": "MIT",
   "author": {
     "name": "Robin Bially",
-    "url": "https://github.com/RobinBially"
+    "url": "https://github.com/localfoundry"
   },
   "bin": {
     "search-rotation": "dist/index.js"
@@ -56,10 +56,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RobinBially/search-rotation.git"
+    "url": "git+https://github.com/localfoundry/search-rotation-mcp.git"
   },
-  "homepage": "https://github.com/RobinBially/search-rotation#readme",
+  "homepage": "https://github.com/localfoundry/search-rotation-mcp#readme",
   "bugs": {
-    "url": "https://github.com/RobinBially/search-rotation/issues"
+    "url": "https://github.com/localfoundry/search-rotation-mcp/issues"
   }
 }

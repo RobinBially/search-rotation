@@ -5,7 +5,7 @@
 
 **One MCP server for web search and page extraction across multiple providers.**
 
-Built by [Robin Bially](https://github.com/RobinBially) · Part of [LocalFoundry](https://github.com/localfoundry).
+Built by [Robin Bially](https://github.com/localfoundry) under the LocalFoundry label.
 
 Rotate across available quotas, automatically fail over when a provider is unavailable, and return consistent results to your AI assistant. A local dashboard lets you manage API keys, reorder engines, check quotas, and inspect request history.
 
@@ -34,13 +34,13 @@ client to run `search-rotation` with no arguments. See the
 Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.9
+npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
 ```
 
 To preview the dashboard:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.9 --http --open
+npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9 --http --open
 ```
 
 Add your provider keys in the dashboard, then connect your assistant using the **[MCP client setup guide](docs/clients.md)** for Codex, Claude, Cursor, or OpenCode.
@@ -121,4 +121,4 @@ The script checks the package (`npm ci`, build, tests, `npm run smoke:package`),
 
 ## Learn more
 
-[Client setup](docs/clients.md) · [Operations & configuration (DE)](docs/operations.md) · [Releases](https://github.com/RobinBially/search-rotation/releases) · [CI](https://github.com/RobinBially/search-rotation/actions/workflows/ci.yml) · [MIT license](LICENSE)
+[Client setup](docs/clients.md) · [Operations & configuration (DE)](docs/operations.md) · [Releases](https://github.com/localfoundry/search-rotation-mcp/releases) · [CI](https://github.com/localfoundry/search-rotation-mcp/actions/workflows/ci.yml) · [MIT license](LICENSE)

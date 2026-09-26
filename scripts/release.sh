@@ -14,7 +14,7 @@
 #
 # Environment:
 #   VERSION             required, x.y.z
-#   RELEASE_REPOSITORY  default RobinBially/search-rotation
+#   RELEASE_REPOSITORY  default localfoundry/search-rotation-mcp
 #   TAP_REPOSITORY      default localfoundry/homebrew-tap
 #   TAP_DIR             existing tap checkout; otherwise cloned temporarily
 #   SKIP_AUDIT=1        skip brew audit after the tap push
@@ -31,7 +31,7 @@ for arg in "$@"; do
 done
 
 VERSION="${VERSION:?VERSION must be set (x.y.z)}"
-RELEASE_REPOSITORY="${RELEASE_REPOSITORY:-RobinBially/search-rotation}"
+RELEASE_REPOSITORY="${RELEASE_REPOSITORY:-localfoundry/search-rotation-mcp}"
 TAP_REPOSITORY="${TAP_REPOSITORY:-localfoundry/homebrew-tap}"
 TAP_FORMULA="search-rotation"
 RELEASE_NOTES="docs/release-notes.md"

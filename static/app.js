@@ -462,7 +462,7 @@ function sparkline(entries) {
 
 function renderSnippets() {
   const remoteUrl = location.origin + "/mcp";
-  const packageRef = "github:localfoundry/search-rotation#v" + state.meta.version;
+  const packageRef = "github:localfoundry/search-rotation-mcp#v" + state.meta.version;
   const args = ["-y", "--allow-git=all", packageRef];
   const codex = $("#snip-codex");
   if (!codex) return;

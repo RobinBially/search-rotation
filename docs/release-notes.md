@@ -9,7 +9,7 @@ brew update && brew upgrade localfoundry/tap/search-rotation
 Or run the pinned GitHub version:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.9
+npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
 ```
 
 
@@ -24,7 +24,7 @@ brew update && brew upgrade localfoundry/tap/search-rotation
 Or run the pinned GitHub version:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.8
+npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.8
 ```
 
 
@@ -48,5 +48,5 @@ brew update && brew upgrade localfoundry/tap/search-rotation
 Or run the pinned GitHub version:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.7
+npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.7
 ```

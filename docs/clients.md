@@ -36,7 +36,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.search-rotation]
 command = "npx"
-args = ["-y", "--allow-git=all", "github:localfoundry/search-rotation#v0.4.9"]
+args = ["-y", "--allow-git=all", "github:localfoundry/search-rotation-mcp#v0.4.9"]
 ```
 
 ## Claude Desktop and Cursor
@@ -48,7 +48,7 @@ Add to Claude Desktop's MCP configuration or Cursor's `.cursor/mcp.json`:
   "mcpServers": {
     "search-rotation": {
       "command": "npx",
-      "args": ["-y", "--allow-git=all", "github:localfoundry/search-rotation#v0.4.9"]
+      "args": ["-y", "--allow-git=all", "github:localfoundry/search-rotation-mcp#v0.4.9"]
     }
   }
 }
@@ -57,7 +57,7 @@ Add to Claude Desktop's MCP configuration or Cursor's `.cursor/mcp.json`:
 ## Claude Code
 
 ```sh
-claude mcp add search-rotation -- npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.9
+claude mcp add search-rotation -- npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
 ```
 
 ## OpenCode V2
@@ -67,14 +67,14 @@ Add this entry under `mcp.servers`:
 ```json
 "search-rotation": {
   "type": "local",
-  "command": ["npx", "-y", "--allow-git=all", "github:localfoundry/search-rotation#v0.4.9"],
+  "command": ["npx", "-y", "--allow-git=all", "github:localfoundry/search-rotation-mcp#v0.4.9"],
   "codemode": true
 }
 ```
 
 ## Local install or release archive
 
-If installed locally, use `search-rotation` as the command. A prebuilt archive is also available under [GitHub Releases](https://github.com/RobinBially/search-rotation/releases/latest):
+If installed locally, use `search-rotation` as the command. A prebuilt archive is also available under [GitHub Releases](https://github.com/localfoundry/search-rotation-mcp/releases/latest):
 
 ```sh
 npm install -g ./search-rotation-0.4.9.tgz
