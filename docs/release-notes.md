@@ -1,3 +1,22 @@
+## v0.4.11 — Distribution under the robin-bially account
+
+The GitHub account moved from `localfoundry` to `robin-bially`, so every distribution
+path follows: the Homebrew tap is `robin-bially/tap`, the official MCP Registry
+namespace becomes `io.github.robin-bially/search-rotation`, and the npm metadata now
+points at the renamed repository. The package itself is unchanged, so there is no
+behaviour change and no configuration migration.
+
+```sh
+brew update && brew upgrade robin-bially/tap/search-rotation
+```
+
+Or run the pinned GitHub version:
+
+```sh
+npx -y --allow-git=all github:robin-bially/search-rotation-mcp#v0.4.11
+```
+
+
 ## v0.4.10 — npm distribution and MCP Registry metadata
 
 The package now ships through npm as well, so `npx -y search-rotation` installs the
