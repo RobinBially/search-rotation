@@ -77,7 +77,7 @@ Add this entry under `mcp.servers`:
 If installed locally, use `search-rotation` as the command. A prebuilt archive is also available under [GitHub Releases](https://github.com/localfoundry/search-rotation-mcp/releases/latest):
 
 ```sh
-npm install -g ./search-rotation-0.4.9.tgz
+npm install -g ./search-rotation-0.4.10.tgz
 ```
 
 npx installs the package from the npm registry, so no Git access is required. The pinned

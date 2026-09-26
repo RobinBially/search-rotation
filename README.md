@@ -41,7 +41,7 @@ client to run `search-rotation` with no arguments. See the
 ### Pinned release from GitHub
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
+npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.10
 ```
 
 Use this when you want a fixed version instead of the current npm release.

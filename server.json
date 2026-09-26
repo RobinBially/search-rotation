@@ -6,12 +6,12 @@
     "url": "https://github.com/localfoundry/search-rotation-mcp",
     "source": "github"
   },
-  "version": "0.4.9",
+  "version": "0.4.10",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "search-rotation",
-      "version": "0.4.9",
+      "version": "0.4.10",
       "transport": {
         "type": "stdio"
       }
