@@ -25,7 +25,9 @@ npx -y search-rotation --http --open
 ```
 
 Requires **Node.js 20.3+**. For MCP over stdio, configure your client to run
-`npx -y search-rotation` with no arguments.
+`npx -y search-rotation` with no arguments. The server is also listed in the
+[official MCP Registry](https://registry.modelcontextprotocol.io/?q=io.github.localfoundry%2Fsearch-rotation)
+as `io.github.localfoundry/search-rotation`.
 
 ### Homebrew
 
