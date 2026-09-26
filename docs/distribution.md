@@ -1,16 +1,16 @@
 # Distribution and listings
 
 Where search-rotation is published or listed, who keeps each channel current, and
-what still needs attention. Snapshot: 2026-09-26, after the account rename from `localfoundry` to `robin-bially`.
+what still needs attention. Snapshot: 2026-09-26, after the account rename from `localfoundry` to `robin-bially` and the 0.4.11 release.
 
 ## Channels
 
 | Channel | Entry | Kept current by | State |
 | --- | --- | --- | --- |
-| npm | `search-rotation` | release workflow, trusted publishing | 0.4.10 |
-| Homebrew | `brew install robin-bially/tap/search-rotation` | release script writes the formula | 0.4.10 |
-| Official MCP Registry | `io.github.robin-bially/search-rotation` | release workflow, GitHub OIDC | rename pending: `io.github.localfoundry/search-rotation` is live at 0.4.10, the next release registers the new name |
-| GitHub releases | tag, tarball and checksum | release script | v0.4.10 |
+| npm | `search-rotation` | release workflow, trusted publishing | 0.4.10; 0.4.11 blocked by the stale trusted publisher, see below |
+| Homebrew | `brew install robin-bially/tap/search-rotation` | release script writes the formula | 0.4.11 |
+| Official MCP Registry | `io.github.robin-bially/search-rotation` | release workflow, GitHub OIDC | blocked: the registry verifies the npm package, so it needs 0.4.11 on npm first; `io.github.localfoundry/search-rotation` stays live at 0.4.10 because the registry has no unpublish |
+| GitHub releases | tag, tarball and checksum | release script | v0.4.11 |
 | Glama | [directory entry](https://glama.ai/mcp/servers/robin-bially/search-rotation-mcp), rated A | Glama indexes the repository on its own | listed; the account rename is pending a re-crawl |
 | mcpservers.org | [submission](https://mcpservers.org/de/submit) from 2026-09-26 | reviewed by the site | in review, up to two weeks |
 | PulseMCP | — | ingests the official registry | submissions paused, not listed yet |
@@ -32,15 +32,16 @@ the package to npm with provenance and then registers the same version in the
 official MCP Registry from `server.json` and the `mcpName` field of
 `package.json`.
 
-Three details are easy to forget:
+Four details are easy to forget:
 
 - `server.json` and `mcpName` must name the same server; `test/registry-manifest.test.ts` fails when they drift apart.
 - The registry limits `description` to 100 characters.
 - The registry verifies ownership through the published npm package, so a manifest can only be registered once that version exists on npm. The workflow skips an already published version, which makes a re-run safe.
+- npm trusted publishing is bound to one repository. The entry for `search-rotation` still named `localfoundry/search-rotation-mcp`, so the 0.4.11 publish failed with `404 Not Found - PUT https://registry.npmjs.org/search-rotation`. Repair with `npm trust github search-rotation --file publish.yml --repo robin-bially/search-rotation-mcp --allow-publish`, then revoke the stale entry (`npm trust list search-rotation`, `npm trust revoke search-rotation --id=<id>`) and re-run the publish workflow. Both commands ask for a one-time password in the browser. The old owner name is free again, so the stale entry also lets a stranger publish to this package.
 
 ## Recurring checks
 
-- After a release: `npm view search-rotation version` and the [registry entry](https://registry.modelcontextprotocol.io/?q=io.github.robin-bially%2Fsearch-rotation) should both show the new version. The release script already waits for npm.
+- After a release: `npm view search-rotation version` and the [registry entry](https://registry.modelcontextprotocol.io/?q=io.github.robin-bially%2Fsearch-rotation) should both show the new version. The release script already waits for npm, but a failed publish workflow leaves the release and the tap ahead of npm, as with 0.4.11.
 - Dependency and tap maintenance runs outside this repository on a biweekly schedule.
 - The GitHub account moved from `localfoundry` to `robin-bially` on 2026-09-26. The registry has no unpublish, so the entry `io.github.localfoundry/search-rotation` stays frozen at 0.4.10 while the next release adds `io.github.robin-bially/search-rotation`. The old handle is free again, so anything still pointing there can end up at a different account.
 - Open externally: mcpservers.org reviews the submission, PulseMCP is paused, the three list pull requests wait for their maintainers, and Glama re-crawls repositories at its own pace.
