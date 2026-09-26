@@ -11,7 +11,7 @@ what still needs attention. Snapshot: 2026-09-26, after the account rename from 
 | Homebrew | `brew install robin-bially/tap/search-rotation` | release script writes the formula | 0.4.11 |
 | Official MCP Registry | `io.github.robin-bially/search-rotation` | release workflow, GitHub OIDC | 0.4.11; the old `io.github.localfoundry/search-rotation` stays frozen at 0.4.10 because the registry has no unpublish |
 | GitHub releases | tag, tarball and checksum | release script | v0.4.11 |
-| Glama | [directory entry](https://glama.ai/mcp/servers/robin-bially/search-rotation-mcp), rated A | Glama indexes the repository on its own | listed; the account rename is pending a re-crawl |
+| Glama | [directory entry](https://glama.ai/mcp/servers/RobinBially/search-rotation), rated A | Glama indexes the repository on its own | listed under the original account name; `glama.ai/mcp/servers/robin-bially/search-rotation-mcp` is still 404, so the rename is pending a re-crawl |
 | mcpservers.org | [submission](https://mcpservers.org/de/submit) from 2026-09-26 | reviewed by the site | in review, up to two weeks |
 | PulseMCP | — | ingests the official registry | submissions paused, not listed yet |
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers/pull/15171) | Search & Data Extraction | maintainers | pull request open, listing checks done |
