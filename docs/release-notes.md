@@ -1,3 +1,21 @@
+## v0.4.10 — npm distribution and MCP Registry metadata
+
+The package now ships through npm as well, so `npx -y search-rotation` installs the
+latest release without Git. Publishing runs in the release workflow through npm
+trusted publishing, and `mcpName` plus `server.json` carry the metadata for the
+official MCP Registry.
+
+```sh
+brew update && brew upgrade localfoundry/tap/search-rotation
+```
+
+Or run the pinned GitHub version:
+
+```sh
+npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.10
+```
+
+
 ## v0.4.9 — Updated Node type definitions
 
 Routine maintenance release: the Node type definitions move to 26.6.3. No behaviour change and no configuration migration. The GitHub release page now shows only the notes for the current version instead of the whole changelog.

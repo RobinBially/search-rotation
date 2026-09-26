@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.localfoundry/search-rotation",
+  "description": "One MCP server for web search and page extraction that rotates across the free tiers of several search providers with automatic failover and a local dashboard for keys and quota status.",
+  "repository": {
+    "url": "https://github.com/localfoundry/search-rotation-mcp",
+    "source": "github"
+  },
+  "version": "0.4.9",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "search-rotation",
+      "version": "0.4.9",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

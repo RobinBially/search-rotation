@@ -25,3 +25,15 @@ jobs:
         run: npm ci
       - name: Publish
         run: npm publish --provenance
+      - name: Install mcp-publisher
+        if: always()
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          sudo mv mcp-publisher /usr/local/bin/
+          mcp-publisher --help >/dev/null
+      - name: Publish to the MCP Registry
+        if: always()
+        continue-on-error: true
+        run: |
+          mcp-publisher login github-oidc
+          mcp-publisher publish

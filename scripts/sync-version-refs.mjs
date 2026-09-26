@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 const PACKAGE = 'search-rotation';
 const REPOSITORY = 'localfoundry/search-rotation-mcp';
 const DOCUMENTS = ['README.md', 'docs/clients.md', 'docs/operations.md'];
+const SERVER_MANIFEST = 'server.json';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
 function target(argv) {
@@ -53,6 +54,32 @@ for (const relative of DOCUMENTS) {
   if (after === before) continue;
   updated.push(relative);
   if (!check) writeFileSync(file, after);
+}
+
+// server.json feeds the MCP Registry and must name the version that is about to
+// be published, so it follows the package version exactly instead of moving
+// forward only like the document pins above.
+try {
+  const manifestFile = join(ROOT, SERVER_MANIFEST);
+  const before = readFileSync(manifestFile, 'utf8');
+  const manifest = JSON.parse(before);
+  let changed = false;
+  if (manifest.version !== version) {
+    manifest.version = version;
+    changed = true;
+  }
+  for (const entry of manifest.packages ?? []) {
+    if (entry.version !== version) {
+      entry.version = version;
+      changed = true;
+    }
+  }
+  if (changed) {
+    updated.push(SERVER_MANIFEST);
+    if (!check) writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
+  }
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
 }
 
 if (check && updated.length > 0) {
