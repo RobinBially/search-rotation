@@ -182,9 +182,25 @@ fi
 echo "== Veröffentlichen"
 git push origin HEAD
 git push origin "v$VERSION"
+# docs/release-notes.md sammelt alle Versionen; als Release-Body nur den
+# Abschnitt dieser Version verwenden.
+notes_file="$OUTPUT/release-notes-v$VERSION.md"
+python3 - "$VERSION" "$RELEASE_NOTES" "$notes_file" <<'PYTHON'
+import re, sys
+from pathlib import Path
+version, source, destination = sys.argv[1:4]
+lines = Path(source).read_text().splitlines()
+heading = re.compile(r'^##\s+v?' + re.escape(version) + r'(?:\s|$)')
+start = next((i for i, line in enumerate(lines) if heading.match(line)), None)
+if start is None:
+    raise SystemExit(f"Kein Abschnitt für v{version} in {source}; Abbruch.")
+end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith('## ')), len(lines))
+Path(destination).write_text("\n".join(lines[start:end]).strip() + "\n")
+print("   Release-Notes:", destination)
+PYTHON
 release_args=("v$VERSION" "$OUTPUT/$TARBALL" "$OUTPUT/SHA256SUMS"
               --repo "$RELEASE_REPOSITORY" --target "$SOURCE_COMMIT"
-              --title "search-rotation $VERSION" --generate-notes --notes-file "$RELEASE_NOTES")
+              --title "search-rotation $VERSION" --generate-notes --notes-file "$notes_file")
 if [[ $draft -eq 1 ]]; then
     release_args+=(--draft)
 fi
