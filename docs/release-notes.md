@@ -1,3 +1,18 @@
+## v0.4.9 — Updated Node type definitions
+
+Routine maintenance release: the Node type definitions move to 26.6.3. No behaviour change and no configuration migration. The GitHub release page now shows only the notes for the current version instead of the whole changelog.
+
+```sh
+brew update && brew upgrade localfoundry/tap/search-rotation
+```
+
+Or run the pinned GitHub version:
+
+```sh
+npx -y --allow-git=all github:localfoundry/search-rotation#v0.4.9
+```
+
+
 ## v0.4.8 — Updated dependencies
 
 Routine maintenance release: the MCP SDK moves to 1.30.1, Hono to 4.13.9, Zod to 4.6.5, tsx to 4.23.15 and the Node type definitions to 26.6.2, together with the matching transitive updates (jose, proxy-addr, ip-address, fast-uri, undici-types). No behaviour change and no configuration migration.
