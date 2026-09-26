@@ -18,6 +18,15 @@ Rotate across available quotas, automatically fail over when a provider is unava
 
 ## Quick start
 
+### npm
+
+```sh
+npx -y search-rotation --http --open
+```
+
+Requires **Node.js 20.3+**. For MCP over stdio, configure your client to run
+`npx -y search-rotation` with no arguments.
+
 ### Homebrew
 
 ```sh
@@ -29,19 +38,13 @@ Homebrew installs the required Node.js runtime. For MCP over stdio, configure yo
 client to run `search-rotation` with no arguments. See the
 [LocalFoundry tap](https://github.com/localfoundry/homebrew-tap) for upgrades and details.
 
-### GitHub / npx
-
-Requires **Node.js 20.3+** and **Git**. Install directly from GitHub — **no npm account needed**.
+### Pinned release from GitHub
 
 ```sh
 npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
 ```
 
-To preview the dashboard:
-
-```sh
-npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9 --http --open
-```
+Use this when you want a fixed version instead of the current npm release.
 
 Add your provider keys in the dashboard, then connect your assistant using the **[MCP client setup guide](docs/clients.md)** for Codex, Claude, Cursor, or OpenCode.
 
@@ -117,7 +120,9 @@ After updating, reconnect your MCP client to load the new tool schema.
 VERSION=0.4.9 ./scripts/release.sh --publish
 ```
 
-The script checks the package (`npm ci`, build, tests, `npm run smoke:package`), bumps the version, points the document pins at it, commits and tags, packs the tarball with its checksum, creates the GitHub release and updates the formula in `localfoundry/homebrew-tap`. Without `--publish` it only prepares the artifacts in `.build/releases`; `--dry-run` checks the prerequisites, `--draft` creates a draft release and `--force` tolerates a dirty tree. The tap is cloned temporarily when `TAP_DIR` is not set, so a fresh checkout is enough.
+The script checks the package (`npm ci`, build, tests, `npm run smoke:package`), bumps the version, points the document pins at it, commits and tags, packs the tarball with its checksum, creates the GitHub release, updates the formula in `localfoundry/homebrew-tap` and finally waits until the npm registry serves the new version. Without `--publish` it only prepares the artifacts in `.build/releases`; `--dry-run` checks the prerequisites, `--draft` creates a draft release and `--force` tolerates a dirty tree. The tap is cloned temporarily when `TAP_DIR` is not set, so a fresh checkout is enough.
+
+Publishing to npm happens in [`.github/workflows/publish.yml`](.github/workflows/publish.yml) through trusted publishing once the GitHub release is published, so the script itself needs no npm credentials. The workflow requires a trusted publisher for `search-rotation` on npmjs.com that points at this repository and `publish.yml`.
 
 ## Learn more
 

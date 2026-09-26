@@ -36,7 +36,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.search-rotation]
 command = "npx"
-args = ["-y", "--allow-git=all", "github:localfoundry/search-rotation-mcp#v0.4.9"]
+args = ["-y", "search-rotation"]
 ```
 
 ## Claude Desktop and Cursor
@@ -48,7 +48,7 @@ Add to Claude Desktop's MCP configuration or Cursor's `.cursor/mcp.json`:
   "mcpServers": {
     "search-rotation": {
       "command": "npx",
-      "args": ["-y", "--allow-git=all", "github:localfoundry/search-rotation-mcp#v0.4.9"]
+      "args": ["-y", "search-rotation"]
     }
   }
 }
@@ -57,7 +57,7 @@ Add to Claude Desktop's MCP configuration or Cursor's `.cursor/mcp.json`:
 ## Claude Code
 
 ```sh
-claude mcp add search-rotation -- npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
+claude mcp add search-rotation -- npx -y search-rotation
 ```
 
 ## OpenCode V2
@@ -67,7 +67,7 @@ Add this entry under `mcp.servers`:
 ```json
 "search-rotation": {
   "type": "local",
-  "command": ["npx", "-y", "--allow-git=all", "github:localfoundry/search-rotation-mcp#v0.4.9"],
+  "command": ["npx", "-y", "search-rotation"],
   "codemode": true
 }
 ```
@@ -80,7 +80,9 @@ If installed locally, use `search-rotation` as the command. A prebuilt archive i
 npm install -g ./search-rotation-0.4.9.tgz
 ```
 
-`--allow-git=all` permits Git dependencies in npm 12. Older npm versions may display a warning for this option. npm/npx are package tools here; the package is distributed on GitHub.
+npx installs the package from the npm registry, so no Git access is required. The pinned
+`github:localfoundry/search-rotation-mcp#vX` form from the README needs `--allow-git=all`
+instead, because npm 12 resolves Git dependencies only when explicitly allowed.
 
 For remote HTTP access, authentication and advanced settings, see the [operations guide (German)](operations.md).
 

@@ -18,15 +18,20 @@
 #   TAP_REPOSITORY      default localfoundry/homebrew-tap
 #   TAP_DIR             existing tap checkout; otherwise cloned temporarily
 #   SKIP_AUDIT=1        skip brew audit after the tap push
+#   SKIP_NPM=1          skip waiting for the npm publish workflow
 #
 # The script is self-contained: it needs node, npm and gh, but no files outside
 # this repository except the tap, which it clones when no checkout is given.
+#
+# The npm package is published by .github/workflows/publish.yml once the GitHub
+# release exists (trusted publishing, so this script holds no npm credentials);
+# here we only wait for the registry to serve the new version and report it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 for arg in "$@"; do
     case "$arg" in
-        -h|--help) sed -n '2,23p' "$0" | sed 's/^# *//'; exit 0 ;;
+        -h|--help) sed -n '2,27p' "$0" | sed 's/^# *//'; exit 0 ;;
     esac
 done
 
@@ -222,9 +227,31 @@ else
     fi
 fi
 
+# --- npm --------------------------------------------------------------------
+if [[ $draft -eq 0 && "${SKIP_NPM:-0}" != 1 ]]; then
+    echo "== npm"
+    npm_ready=0
+    npm_deadline=$((SECONDS + 180))
+    while (( SECONDS < npm_deadline )); do
+        published=$(npm view "$PACKAGE" version 2>/dev/null || true)
+        if [[ "$published" == "$VERSION" ]]; then
+            npm_ready=1
+            break
+        fi
+        sleep 10
+    done
+    if (( npm_ready == 1 )); then
+        echo "   npm: $PACKAGE@$VERSION veröffentlicht."
+    else
+        echo "   npm: $PACKAGE@$VERSION noch nicht sichtbar."
+        echo "   Publish-Workflow prüfen: https://github.com/$RELEASE_REPOSITORY/actions/workflows/publish.yml"
+    fi
+fi
+
 cat <<EOF
 == Fertig
    Release  https://github.com/$RELEASE_REPOSITORY/releases/tag/v$VERSION
+   npm      https://www.npmjs.com/package/$PACKAGE
    Paket    $TARBALL (sha256 $SHA256)
    Formel   $formula_path
    Quelle   $SOURCE_COMMIT

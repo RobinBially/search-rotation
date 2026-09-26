@@ -462,8 +462,7 @@ function sparkline(entries) {
 
 function renderSnippets() {
   const remoteUrl = location.origin + "/mcp";
-  const packageRef = "github:localfoundry/search-rotation-mcp#v" + state.meta.version;
-  const args = ["-y", "--allow-git=all", packageRef];
+  const args = ["-y", "search-rotation"];
   const codex = $("#snip-codex");
   if (!codex) return;
   codex.textContent = '[mcp_servers.search-rotation]\ncommand = "npx"\nargs = ' + JSON.stringify(args);
