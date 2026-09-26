@@ -8,18 +8,22 @@
     "source": "github",
     "id": "1357478105"
   },
-  "version": "0.4.10",
+  "version": "0.4.11",
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/robin-bially/search-rotation-mcp/main/docs/assets/brand/icon-light-512.png",
       "mimeType": "image/png",
-      "sizes": ["512x512"],
+      "sizes": [
+        "512x512"
+      ],
       "theme": "light"
     },
     {
       "src": "https://raw.githubusercontent.com/robin-bially/search-rotation-mcp/main/docs/assets/brand/icon-dark-512.png",
       "mimeType": "image/png",
-      "sizes": ["512x512"],
+      "sizes": [
+        "512x512"
+      ],
       "theme": "dark"
     }
   ],
@@ -27,7 +31,7 @@
     {
       "registryType": "npm",
       "identifier": "search-rotation",
-      "version": "0.4.10",
+      "version": "0.4.11",
       "transport": {
         "type": "stdio"
       }
