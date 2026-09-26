@@ -35,7 +35,7 @@ test("server.json verweist auf das Repository und beschreibt das npm-Paket", () 
   assert.equal(manifest.repository.source, "github");
   assert.equal(
     manifest.repository.url,
-    "https://github.com/localfoundry/search-rotation-mcp",
+    "https://github.com/robin-bially/search-rotation-mcp",
   );
   const npm = (manifest.packages ?? []).find(
     (entry: { registryType?: string }) => entry.registryType === "npm",

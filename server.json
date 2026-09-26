@@ -1,23 +1,23 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.localfoundry/search-rotation",
+  "name": "io.github.robin-bially/search-rotation",
   "title": "search-rotation",
   "description": "MCP server for web search and page extraction across the free tiers of several providers",
   "repository": {
-    "url": "https://github.com/localfoundry/search-rotation-mcp",
+    "url": "https://github.com/robin-bially/search-rotation-mcp",
     "source": "github",
     "id": "1357478105"
   },
   "version": "0.4.10",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/localfoundry/search-rotation-mcp/main/docs/assets/brand/icon-light-512.png",
+      "src": "https://raw.githubusercontent.com/robin-bially/search-rotation-mcp/main/docs/assets/brand/icon-light-512.png",
       "mimeType": "image/png",
       "sizes": ["512x512"],
       "theme": "light"
     },
     {
-      "src": "https://raw.githubusercontent.com/localfoundry/search-rotation-mcp/main/docs/assets/brand/icon-dark-512.png",
+      "src": "https://raw.githubusercontent.com/robin-bially/search-rotation-mcp/main/docs/assets/brand/icon-dark-512.png",
       "mimeType": "image/png",
       "sizes": ["512x512"],
       "theme": "dark"

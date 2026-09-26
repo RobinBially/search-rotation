@@ -6,13 +6,13 @@ trusted publishing, and `mcpName` plus `server.json` carry the metadata for the
 official MCP Registry.
 
 ```sh
-brew update && brew upgrade localfoundry/tap/search-rotation
+brew update && brew upgrade robin-bially/tap/search-rotation
 ```
 
 Or run the pinned GitHub version:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.10
+npx -y --allow-git=all github:robin-bially/search-rotation-mcp#v0.4.10
 ```
 
 
@@ -21,13 +21,13 @@ npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.10
 Routine maintenance release: the Node type definitions move to 26.6.3. No behaviour change and no configuration migration. The GitHub release page now shows only the notes for the current version instead of the whole changelog.
 
 ```sh
-brew update && brew upgrade localfoundry/tap/search-rotation
+brew update && brew upgrade robin-bially/tap/search-rotation
 ```
 
 Or run the pinned GitHub version:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
+npx -y --allow-git=all github:robin-bially/search-rotation-mcp#v0.4.9
 ```
 
 
@@ -36,13 +36,13 @@ npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.9
 Routine maintenance release: the MCP SDK moves to 1.30.1, Hono to 4.13.9, Zod to 4.6.5, tsx to 4.23.15 and the Node type definitions to 26.6.2, together with the matching transitive updates (jose, proxy-addr, ip-address, fast-uri, undici-types). No behaviour change and no configuration migration.
 
 ```sh
-brew update && brew upgrade localfoundry/tap/search-rotation
+brew update && brew upgrade robin-bially/tap/search-rotation
 ```
 
 Or run the pinned GitHub version:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.8
+npx -y --allow-git=all github:robin-bially/search-rotation-mcp#v0.4.8
 ```
 
 
@@ -60,11 +60,11 @@ Engine call counts are now visible with or without an API key. Search, fetch, an
 No configuration migration is required. Reconnect MCP clients after updating.
 
 ```sh
-brew update && brew upgrade localfoundry/tap/search-rotation
+brew update && brew upgrade robin-bially/tap/search-rotation
 ```
 
 Or run the pinned GitHub version:
 
 ```sh
-npx -y --allow-git=all github:localfoundry/search-rotation-mcp#v0.4.7
+npx -y --allow-git=all github:robin-bially/search-rotation-mcp#v0.4.7
 ```

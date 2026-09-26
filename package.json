@@ -1,13 +1,13 @@
 {
   "name": "search-rotation",
   "version": "0.4.10",
-  "mcpName": "io.github.localfoundry/search-rotation",
+  "mcpName": "io.github.robin-bially/search-rotation",
   "description": "Round-robin web search over the free tiers of multiple search APIs (Tavily, Firecrawl, Parallel, Exa, Google PSE, Jina, DuckDuckGo) as an MCP server — with a local dashboard for API keys, engine order/toggles and live quota status.",
   "type": "module",
   "license": "MIT",
   "author": {
     "name": "Robin Bially",
-    "url": "https://github.com/localfoundry"
+    "url": "https://github.com/robin-bially"
   },
   "bin": {
     "search-rotation": "dist/index.js"
@@ -57,10 +57,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/localfoundry/search-rotation-mcp.git"
+    "url": "git+https://github.com/robin-bially/search-rotation-mcp.git"
   },
-  "homepage": "https://github.com/localfoundry/search-rotation-mcp#readme",
+  "homepage": "https://github.com/robin-bially/search-rotation-mcp#readme",
   "bugs": {
-    "url": "https://github.com/localfoundry/search-rotation-mcp/issues"
+    "url": "https://github.com/robin-bially/search-rotation-mcp/issues"
   }
 }

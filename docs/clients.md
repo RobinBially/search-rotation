@@ -5,7 +5,7 @@
 ## Homebrew installation
 
 ```sh
-brew install localfoundry/tap/search-rotation
+brew install robin-bially/tap/search-rotation
 ```
 
 Homebrew installs Node.js automatically. Set your MCP client's command to
@@ -74,14 +74,14 @@ Add this entry under `mcp.servers`:
 
 ## Local install or release archive
 
-If installed locally, use `search-rotation` as the command. A prebuilt archive is also available under [GitHub Releases](https://github.com/localfoundry/search-rotation-mcp/releases/latest):
+If installed locally, use `search-rotation` as the command. A prebuilt archive is also available under [GitHub Releases](https://github.com/robin-bially/search-rotation-mcp/releases/latest):
 
 ```sh
 npm install -g ./search-rotation-0.4.10.tgz
 ```
 
 npx installs the package from the npm registry, so no Git access is required. The pinned
-`github:localfoundry/search-rotation-mcp#vX` form from the README needs `--allow-git=all`
+`github:robin-bially/search-rotation-mcp#vX` form from the README needs `--allow-git=all`
 instead, because npm 12 resolves Git dependencies only when explicitly allowed.
 
 For remote HTTP access, authentication and advanced settings, see the [operations guide (German)](operations.md).

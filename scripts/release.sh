@@ -1,6 +1,6 @@
 #!/bin/bash
 # Release search-rotation: checks, version, package, GitHub release and the
-# Homebrew formula in localfoundry/homebrew-tap.
+# Homebrew formula in robin-bially/homebrew-tap.
 #
 # Usage:
 #   VERSION=0.4.9 ./scripts/release.sh [output-dir] [--dry-run] [--publish] [--draft] [--force]
@@ -14,8 +14,8 @@
 #
 # Environment:
 #   VERSION             required, x.y.z
-#   RELEASE_REPOSITORY  default localfoundry/search-rotation-mcp
-#   TAP_REPOSITORY      default localfoundry/homebrew-tap
+#   RELEASE_REPOSITORY  default robin-bially/search-rotation-mcp
+#   TAP_REPOSITORY      default robin-bially/homebrew-tap
 #   TAP_DIR             existing tap checkout; otherwise cloned temporarily
 #   SKIP_AUDIT=1        skip brew audit after the tap push
 #   SKIP_NPM=1          skip waiting for the npm publish workflow
@@ -36,8 +36,8 @@ for arg in "$@"; do
 done
 
 VERSION="${VERSION:?VERSION must be set (x.y.z)}"
-RELEASE_REPOSITORY="${RELEASE_REPOSITORY:-localfoundry/search-rotation-mcp}"
-TAP_REPOSITORY="${TAP_REPOSITORY:-localfoundry/homebrew-tap}"
+RELEASE_REPOSITORY="${RELEASE_REPOSITORY:-robin-bially/search-rotation-mcp}"
+TAP_REPOSITORY="${TAP_REPOSITORY:-robin-bially/homebrew-tap}"
 TAP_FORMULA="search-rotation"
 RELEASE_NOTES="docs/release-notes.md"
 PACKAGE="search-rotation"
@@ -223,7 +223,7 @@ else
         echo "   Entwurf: Online-Audit erst nach dem Veroeffentlichen des Releases."
     elif [[ "${SKIP_AUDIT:-0}" != 1 ]] && command -v brew >/dev/null; then
         brew update -q
-        brew audit --formula --strict --online "localfoundry/tap/$TAP_FORMULA"
+        brew audit --formula --strict --online "robin-bially/tap/$TAP_FORMULA"
     fi
 fi
 

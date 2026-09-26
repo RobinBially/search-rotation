@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PACKAGE = 'search-rotation';
-const REPOSITORY = 'localfoundry/search-rotation-mcp';
+const REPOSITORY = 'robin-bially/search-rotation-mcp';
 const DOCUMENTS = ['README.md', 'docs/clients.md', 'docs/operations.md'];
 const SERVER_MANIFEST = 'server.json';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
